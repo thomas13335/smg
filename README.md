@@ -1,0 +1,2 @@
+# smg
+State Machine Generator
