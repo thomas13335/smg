@@ -1,0 +1,123 @@
+<html>
+<body>
+    <h1>SMG State Machine Generator</h1>
+
+    <p>
+        This state machine generator creates source code from a state machine definition.
+    </p>
+    <p>
+        State machines supported by this generator have the following properties:
+    </p>
+    <ul>
+        <li>Accept a set of distinct <i>input events</i>.</li>
+        <li>Contain a <i>state variables</i> with definite number of elementary states.</li>
+        <li>Have <i>Triggers</i> describing state transitions.</li>
+        <li>Have <i>Guards</i> observing state transitions.</li>
+        <li>Triggers and guards may have actions attached.</li>
+    </ul>
+
+    <h2>Basic Example</h2>
+
+    Start with a sample containing these elements in a minimal form. First, declare a state variable with two possible states:
+
+    <pre>SMG sample1 
+DECLARE StateType (A, B) State</pre>
+
+<p>Now a trigger is a combination of an event with a state transition condition,</p>
+
+    <pre>TRIGGER Toggle WHEN State(A => B) OR State(B => A)
+</pre>
+
+<p>while a guard may observe an entry, exit or transition condition:</p>
+    <pre>GUARD EnterStateB WHEN ENTER State(B)
+GUARD LeaveStateA WHEN LEAVE State(A)
+GUARD TransitAToB WHEN State(A => B)
+</pre>
+
+<p>Eventually, actions can be attached to triggers and guards:</p>
+    <pre>GUARD TransitBToA WHEN State(B => A)
+        CALL SomeAction
+        SEND SubsequentEvent</pre>
+
+<h2>State Variables</h2>
+
+    <p>State variables come in two flavors, <i>boolean</i> (false, true) and <i>simple</i> (multiple states).</p>
+
+    <p>State variables are created by the DECLARE statement.</p>
+
+    <p>A state variable is in exactly one of the possible states at any time.</p>
+
+<h2>State Conditions</h2>
+
+    <p>A state condition is used to decribe the pre- or postconditions of a trigger or guard.</p>
+
+    <h3>Static State Conditions</h3>
+    <p>Describes a subset of the state space by a logical expression on the states of the variables. Given a variable <i>x</i> declared as</p>
+    <pre>DECLARE StateType (A, B, C, D) x</pre>
+    <p>subsets of the state space can be described by specifying the states in brackets after the variable name:</p>
+    <pre>x (A, B)</pre>
+    <p>This is equivalent to </p>
+    <pre>x(A) OR x(B)</pre>
+    <h3>State Transitions</h3>
+    <p>The state condition syntax is extended by the => operator to describe state transitions.</p>
+    <pre>x(A => B)</pre>
+    <p>This can include a wildcards, occasionally:</p>
+    <pre>x(A => *)</pre>
+    <pre>x(* => C, D)</pre>
+
+    <h2>Boolean Expressions</h2>
+    <p>State conditions can be combined into logical expressions using the AND, OR and NOT keywords, e.g.:</p>
+    <pre>NOT (s(A) OR s(B))</pre>
+    <p>is equivalent to</p>
+    <pre>s(C, D)</pre>
+
+<h2>Triggers</h2>
+    <p>A trigger defines a set of state transitions given a logical combination of transition state expressions:</p>
+    <pre>TRIGGER t1 WHEN x(A, B => C)</pre>
+    <p>stands for two possible state transitions, for example, equivalently:</p>
+    <pre>TRIGGER t1 WHEN x(A => C) OR (B => C)</pre>
+    <p>which may also be written as two separate triggers:</p>
+    <pre>TRIGGER t1 WHEN x(A => C) 
+TRIGGER t1 WHEN x(B => C)</pre>
+
+<h2>Guards</h2>
+    <p>The actions of a guard are fired when the corresponding guard condition occurs. When there are two triggers</p>
+    <pre>TRIGGER t2 WHEN x(A => C)</pre>
+    <pre>TRIGGER t3 WHEN x(B => C)</pre>
+    <p>for example, then the following guard will fire on both of them:</p>
+    <pre>GUARD WHEN x(A, B => C)</pre>
+<h2>Actions</h2>
+    <p>Since additional logical can easily be added in the <i>other</i> language, there are only two actions:</p>
+    <h3>CALL</h3>
+    <p>The call action invokes a function defined in the corresponding code class.</p>
+    <h3>SEND</h3>
+    <p>Sends an event into the event queue for immediate processing. This can be used to trigger synchronization events, such as</p>
+    <pre>TRIGGER t4 WHEN alpha(A => B)
+TRIGGER t5 WHEN beta(A => B)
+GUARD WHEN ENTER alpha(B) AND beta(B)
+    SEND BothAreB
+TRIGGER BothAreB WHEN extra(ok)
+    CALL BothAreBAndExtraIsOK
+</pre>
+
+    <h1>Generated Code</h1>
+    <p>The code generator creates a class definition from a script, containing:
+    </p>
+    <ul>
+        <li>Enumerations for the event and state types declared in the script.</li>
+        <li>The <b>ProcessEvent</b> method.</li>
+        <li>Event handler methods for the events specified in the script.</li>
+        <li>Callouts to methods referenced.</li>
+    </ul>
+    <p>Roughly, it might look like this:</p>
+    <pre>public partical class Test 
+{
+    protected virtual void <b>ProcessEvent</b>(EventCode e, object arg) ...
+    protected virtual void <b>Handler_<i>EventName</i></b>(object arg) {
+        ...
+        <b>CallTarget</b>(arg);
+        ...
+    }
+}</pre>
+</body>
+</html>
