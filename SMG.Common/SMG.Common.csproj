@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{6BDE60F0-56BB-4C89-AC87-303C16F9F9CA}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>SMG.Common</RootNamespace>
+    <AssemblyName>SMG.Common</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <DocumentationFile>
+    </DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Algebra\BooleanFactor.cs" />
+    <Compile Include="Algebra\Factor.cs" />
+    <Compile Include="Algebra\Product.cs" />
+    <Compile Include="Algebra\SumOfProducts.cs" />
+    <Compile Include="Algebra\SimpleFactor.cs" />
+    <Compile Include="Bitmap.cs" />
+    <Compile Include="Code\CodeGenerator.cs" />
+    <Compile Include="Code\CodeLabel.cs" />
+    <Compile Include="Code\CodeParameters.cs" />
+    <Compile Include="Code\CodeWriter.cs" />
+    <Compile Include="Code\CSharpCodeGenerator.cs" />
+    <Compile Include="Code\ITriggerConditions.cs" />
+    <Compile Include="Code\TriggerConditions.cs" />
+    <Compile Include="Code\TriggerTermCollection.cs" />
+    <Compile Include="Effects\EffectCondition.cs" />
+    <Compile Include="Effects\EffectList.cs" />
+    <Compile Include="Effects\EffectsCollection.cs" />
+    <Compile Include="Code\GateCache.cs" />
+    <Compile Include="Code\GateConverter.cs" />
+    <Compile Include="Code\GuardCollection.cs" />
+    <Compile Include="Code\LabelGate.cs" />
+    <Compile Include="Condition.cs" />
+    <Compile Include="Conditions\ConditionOperations.cs" />
+    <Compile Include="Conditions\AnyCondition.cs" />
+    <Compile Include="Conditions\BooleanCondition.cs" />
+    <Compile Include="Conditions\CompositeCondition.cs" />
+    <Compile Include="Conditions\ElementaryCondition.cs" />
+    <Compile Include="Conditions\IntersectCondition.cs" />
+    <Compile Include="Conditions\InvertCondition.cs" />
+    <Compile Include="Conditions\StateCondition.cs" />
+    <Compile Include="Conditions\UnionCondition.cs" />
+    <Compile Include="Conditions\VariableCondition.cs" />
+    <Compile Include="Effects\CallEffect.cs" />
+    <Compile Include="Effects\SendEffect.cs" />
+    <Compile Include="Exceptions\CompilerException.cs" />
+    <Compile Include="GateOperations.cs" />
+    <Compile Include="Gates\CompositeGate.cs" />
+    <Compile Include="Gates\ConstantGate.cs" />
+    <Compile Include="Gates\TrueGate.cs" />
+    <Compile Include="GateType.cs" />
+    <Compile Include="ICondition.cs" />
+    <Compile Include="Conditions\IdList.cs" />
+    <Compile Include="IGate.cs" />
+    <Compile Include="StateMachine.cs" />
+    <Compile Include="StateType.cs" />
+    <Compile Include="TraceOptions.cs" />
+    <Compile Include="Effects\Effect.cs" />
+    <Compile Include="Transitions\Event.cs" />
+    <Compile Include="Transitions\Guard.cs" />
+    <Compile Include="Transitions\ProductTrigger.cs" />
+    <Compile Include="Transitions\Transition.cs" />
+    <Compile Include="Extensions.cs" />
+    <Compile Include="Gate.cs" />
+    <Compile Include="Gates\ANDGate.cs" />
+    <Compile Include="Gates\FalseGate.cs" />
+    <Compile Include="Gates\InvertedInput.cs" />
+    <Compile Include="Gates\ORGate.cs" />
+    <Compile Include="Input.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Transitions\TransitionMonitor.cs" />
+    <Compile Include="Transitions\TransitionSet.cs" />
+    <Compile Include="Transitions\Trigger.cs" />
+    <Compile Include="Transitions\TriggerGuard.cs" />
+    <Compile Include="Types\BooleanStateType.cs" />
+    <Compile Include="Types\SimpleStateType.cs" />
+    <Compile Include="Variable.cs" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

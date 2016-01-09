@@ -1,0 +1,198 @@
+﻿/*
+	Syntax definition for the SMG utility.
+
+	Based on COCO/R, see http://www.ssw.uni-linz.ac.at/Coco/
+*/
+
+COMPILER SMG
+
+IGNORECASE
+CHARACTERS
+ letter = 'A'..'Z' + 'a'..'z'.
+ digit = '0'..'9'. 
+
+TOKENS
+ identifier = letter {letter | digit}.
+ number = digit {digit}.
+
+COMMENTS FROM "/*" TO "*/" NESTED
+COMMENTS FROM "//" TO '\n' 
+
+IGNORE '\r' + '\n' + '\t' 
+
+PRODUCTIONS
+
+	SMG =									(. string name; .)
+		"SMG" Identifier<out name>			(. if(null != SM) { SM.Name = name; } .)
+		{ 
+			Declare 
+			| 
+			Assert 
+			| 
+			Trigger 
+			| 
+			Guard 
+		}
+		|
+		"EVAL"								(. ICondition c; .)
+		Condition<out c>					(. Result = c; .)
+		.
+
+	Declare 
+	= 
+		"DECLARE"							(. StateType stype; .) 
+		TypeReference<out stype>				
+		[ 
+			VariableDefinition<stype>
+			{ 
+				',' 
+				VariableDefinition<stype> 
+			}
+		]
+		.
+
+	Assert									(. ICondition cond; .)
+	= 
+		"ASSERT"
+		Condition<out cond>					(. SM.AddAssertion(cond); .)
+		.
+
+	Trigger									(. ICondition cond; string name; Event e; Trigger trigger; EffectList effects;  .)
+	=
+		"TRIGGER"
+		Identifier<out name>				(. e = SM.AddEvent(name); .)
+		{
+			"WHEN"
+			Condition<out cond>				(. trigger = new Trigger(e, cond); .)
+			[ 
+				ActionList<out effects>		(. trigger.AddEffects(effects); .)
+			]
+											(. SM.AddTrigger(trigger); .)
+		}
+		.
+
+	Guard									(. ICondition cond = null; EffectList effects; string name = null; GuardType gtype = GuardType.Undefined; .)
+	=
+		"GUARD" 
+		[ Identifier<out name> ]
+		"WHEN"						
+		( "ENTER"							(. gtype = GuardType.ENTER; .)
+		 | 
+		 "LEAVE"							(. gtype = GuardType.LEAVE; .)
+		 | )
+		Condition<out cond>					(. Guard guard = SM.AddGuard(cond, gtype, name); .)
+		[
+			ActionList<out effects>			(. guard.AddEffects(effects); .)
+		]
+		.
+
+	VariableDefinition<StateType stype>		(. string name; .)
+	=
+		Identifier<out name>				(. SM.AddVariable(name, stype); .)
+		.
+
+
+	ActionList<out EffectList actions>		(. actions = new EffectList(); Effect effect; .)
+	=
+		Action<out effect>					(. actions.Add(effect); .)
+		{
+			Action<out effect>				(. actions.Add(effect); .)
+		}
+		.		
+		
+	Action<out Effect effect>				(. string name; effect = null; .)
+	=
+		"SEND" Identifier<out name>			(. effect = new SendEffect(SM, name); .)
+		|
+		"CALL" Identifier<out name>			(. effect = new CallEffect(SM, name); .)
+		/* |
+		"BEGIN"
+		{
+			Trigger | Guard | Action<out effect>
+		}
+		"END" */
+		.
+		
+
+	Condition<out ICondition cond>			(. cond = null; ICondition other = null; .)
+	=
+		SimpleCondition<out cond>
+		{ 
+			"AND"
+			SimpleCondition<out other>		(. cond = cond.ComposeIntersection(other); .)
+			|
+			"OR" 
+			SimpleCondition<out other>		(. cond = cond.ComposeUnion(other); .)
+		}		
+											(. cond.Freeze(); .)
+		.
+
+	SimpleCondition<out ICondition cond>		(. cond = null; ICondition other = null; .)
+	=
+		"NOT" SimpleCondition<out other>		(. cond = other.Invert(); .)
+		|
+		StateCondition<out cond>
+		|
+		'(' 
+			Condition<out cond> 
+		')'
+		.
+
+	StateCondition<out ICondition cond>			
+												(. string varname; Variable v; StateCondition scond = null; IdList pre, post; 
+													cond = null; 
+												.)
+	=	
+		Identifier<out varname>					(. v = SM.GetVariable(varname); .)
+		[
+		'('										(. scond = new StateCondition(v); .)
+			StateIdentifierList<out pre>		(. scond.SetPreStates(pre); .)
+			[
+				"=>" 
+				StateIdentifierList<out post>	(. scond.SetPostStates(post); .)
+			]
+		')'
+		]
+												(. cond = (ICondition)scond ?? new BooleanCondition(v); .)
+		.
+
+	StateIdentifierList<out IdList list>		(. list = null; .)
+	= 
+		IdentifierList<out list>
+		|
+		"*"										(. list = new IdList(true); .)
+		|
+		"0"										(. list = new IdList("0"); .)
+		|
+		"1"										(. list = new IdList("1"); .)
+		.
+
+	TypeReference<out StateType stype>			(. stype = null; string name; .)
+	=									
+		Identifier<out name>					(. stype = SM.GetStateType(name); .)
+		[									
+			'('									(. if(null != stype) throw new Exception("SMGXXX: type is already defined."); .)
+												(. stype = SM.AddSimpleType(name); .)
+												(. IdList list; .)
+			 IdentifierList<out list>			(. stype.AddStateNames(list); .)
+			')'
+												
+												(. stype.Freeze(); .)
+		]
+												(. if(null == stype) throw new Exception("SMG023: type " + name + " is undefined."); .)
+		.										
+
+	IdentifierList<out IdList list>				(. list = new IdList(); string name; .)
+	= 
+		Identifier<out name>					(. list.Add(name); .)
+		{ ',' Identifier<out name>				(. list.Add(name); .)
+		}
+		.
+
+	Identifier<out string name> 
+	=
+		identifier								(. name = t.val; .)
+		.
+		
+
+END SMG.
