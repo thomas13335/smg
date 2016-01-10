@@ -11,16 +11,31 @@ namespace SMG.UnitTest
 {
     class Program
     {
-        static int Main()
+        static int Main(string[] args)
         {
-            //return RunOne();
-            return RunAll();
+            if (args.Contains("all"))
+            {
+                return RunAll();
+            }
+            else
+            {
+                try
+                {
+                    //return RunOne();
+                    return RunAll();
+                }
+                catch(AggregateException ex)
+                {
+                    Debug.WriteLine(ex.InnerExceptions.Count + " error(s)");
+                    return 1;
+                }
+            }
         }
 
         private static int RunOne()
         {
             var test = new UnitTest1();
-            test.SMG_04_03_CodeLabels();
+            test.SMG_05_02_CodeGeneration();
             return 0;
         }
 

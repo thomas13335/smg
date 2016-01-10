@@ -18,10 +18,14 @@ namespace SMG.Common
 
         private List<ICondition> _elements = new List<ICondition>();
         private bool _frozen = false;
+        private static int _seed = 0;
+        private string _key;
 
         #endregion
 
         #region Properties
+
+        public string Key { get { return _key; } }
 
         public IList<ICondition> Elements { get { return _elements; } }
 
@@ -31,6 +35,7 @@ namespace SMG.Common
 
         protected Condition()
         {
+            _key = (_seed++).ToString();
         }
 
         /// <summary>
@@ -38,6 +43,7 @@ namespace SMG.Common
         /// </summary>
         /// <param name="clist"></param>
         protected Condition(IEnumerable<ICondition> clist)
+            : this()
         {
             _elements.AddRange(clist);
         }

@@ -16,9 +16,11 @@ namespace SMG.Common
         GateType Type { get; }
 
         /// <summary>
-        /// Unique cache identifier for this gate.
+        /// Unique cache identifier assigned by the GateCache.
         /// </summary>
         string ID { get; }
+
+        string CacheKey { get; }
 
         /// <summary>
         /// Called when the gate is added to the cache.
@@ -35,10 +37,10 @@ namespace SMG.Common
         IGate Clone();
 
         /// <summary>
-        /// Emits the code corresponding to the gate.
+        /// Emits the code corresponding to the gate into a gate evaluator.
         /// </summary>
         /// <param name="writer"></param>
-        void Emit(CodeWriter writer);
+        void Emit(ICodeGateEvaluator writer);
     }
 
     /// <summary>

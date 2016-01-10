@@ -69,6 +69,12 @@ namespace SMG.Common.Transitions
             _guards.Add(g);
         }
 
+        public void Clear()
+        {
+            _guards.Clear();
+        }
+
+
         #endregion
     }
 }

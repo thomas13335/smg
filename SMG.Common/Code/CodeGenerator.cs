@@ -17,7 +17,7 @@ namespace SMG.Common.Code
     /// </summary>
     /// <remarks>
     /// <para>Derive from this class to create specific target language generators.</para></remarks>
-    public abstract class CodeGenerator : ICodeLabelEvaluator
+    public abstract class CodeGenerator : ICodeLabelEvaluator, ICodeGateEvaluator
     {
         #region Private
 
@@ -132,11 +132,11 @@ namespace SMG.Common.Code
         protected virtual void EmitTypeDeclaration(string typename, IEnumerable<string> values)
         { }
 
-        protected virtual void EmitVariableDeclaration(Variable v)
-        { }
+        protected abstract void EmitVariableDeclaration(Variable v);
 
-        protected virtual void EmitVariableAssignment(Variable v, int stateindex)
-        { }
+        protected abstract void EmitVariableAccessor(Variable v);
+
+        protected abstract void EmitVariableAssignment(Variable v, int stateindex);
 
         protected virtual void EmitMethodDeclaration(string method)
         {
@@ -150,8 +150,7 @@ namespace SMG.Common.Code
             }
         }
 
-        protected virtual void EmitProcessEventMethodHeader()
-        { }
+        protected abstract void EmitProcessEventMethodHeader();
 
         protected virtual void EmitEnterBlock()
         {
@@ -174,16 +173,9 @@ namespace SMG.Common.Code
             EmitLeaveBlock();
         }
 
-        protected virtual void EmitSwitchCaseLabel(Event e)
-        {
-        }
+        protected abstract void EmitSwitchCaseLabel(Event e);
 
-        protected virtual void EmitHandlerInvocation(Event e)
-        {
-            Writer.AppendLine(e.Name + "_Handler();");
-            Writer.AppendLine("break;");
-            Writer.AppendLine();
-        }
+        protected abstract void EmitHandlerInvocation(Event e);
 
         protected virtual void EmitProcessEventMethod()
         {
@@ -202,9 +194,7 @@ namespace SMG.Common.Code
             EmitLeaveBlock();
         }
 
-        protected virtual void EmitClassHeader()
-        {
-        }
+        protected abstract void EmitClassHeader();
 
         protected virtual void EmitClassFooter()
         {
@@ -217,7 +207,7 @@ namespace SMG.Common.Code
         protected virtual void EmitGate(IGate gate)
         {
             gate = _gc.ReplaceWithLabelIf(gate);
-            gate.Emit(Writer);
+            gate.Emit(this);
         }
 
         protected virtual void EmitIfHeader(IGate gate)
@@ -234,9 +224,24 @@ namespace SMG.Common.Code
         public virtual void EmitCodeLabelAssignment(string label, IGate gate)
         {
             Writer.Append("var " + label + " = ");
-            gate.Emit(Writer);
+            gate.Emit(this);
             Writer.AppendLine(";");
         }
+
+        #endregion
+
+        #region ICodeGateEvaluator
+
+        void ICodeGateEvaluator.Append(string text)
+        {
+            Writer.Append(text);
+        }
+
+        public abstract void EmitVariable(Variable v);
+
+        public abstract void EmitBinaryOperator(GateType type);
+
+        public abstract void EmitVariableStateCondition(Variable v, int stateindex);
 
         #endregion
 
@@ -257,6 +262,12 @@ namespace SMG.Common.Code
             {
                 EmitVariableDeclaration(v);
             }
+
+            Writer.AppendComment();
+            foreach (var v in SM.Variables)
+            {
+                EmitVariableAccessor(v);
+            }
         }
 
         /// <summary>
@@ -276,6 +287,12 @@ namespace SMG.Common.Code
             _guards.AddLeaveEffects(_effectsbefore);
             _guards.AddEnterEffects(_effectsafter);
             AddTriggerEffects(e.Triggers);
+
+            foreach(var t in e.Triggers)
+            {
+                var c = _gc.ConvertToGate(0, t.PreCondition);
+                _gc.Schedule(c);
+            }
 
             _effectsbefore.Schedule(_gc);
             _effectsafter.Schedule(_gc);

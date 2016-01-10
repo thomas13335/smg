@@ -1,0 +1,72 @@
+﻿
+SMG Script2
+
+DECLARE GState ( 
+	initial, 
+	primary, 
+	register,
+	validate, 
+	activate,
+	login, 
+	open,
+	config,
+	accept,
+	redirect,
+	final
+	)
+	g
+
+DECLARE UState ( 
+	initial,
+	unspecified,
+	loadbrowser,		/* load user session info from browser state */ 
+	resolving, 
+	unresolved, 
+	revalidate,
+	resolved,
+	getchallenge,
+	password,
+	verify,
+	activating,
+	ready
+	)
+	u
+
+DECLARE SState ( 
+	initial, 
+	unspecified,
+	resolving,
+	ready,
+	error,
+	unresolved,
+	querycert 
+	)
+	s
+
+DECLARE GrantState  (
+	unknown,
+	confirm,
+	saving,
+	granted
+	)
+	grant
+
+DECLARE BusyState (
+	wait,
+	interactive,
+	error
+	)
+	busy
+
+/*TRIGGER IdStateOpen
+	WHEN u(revalidate => ready) 
+	WHEN u(resolved => ready) 
+	WHEN u(activating => ready)
+	WHEN u(password => ready)*/ 
+
+TRIGGER IdStatePasswordOK
+	WHEN u(getchallenge => password)
+
+
+TRIGGER IdStatePasswordWrong
+	WHEN u(password => unspecified) AND busy(* => error)

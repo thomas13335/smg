@@ -1,0 +1,13 @@
+﻿smg CodeGeneration
+
+declare State (a, b) s, t
+declare boolean f
+
+trigger e1 when s(a => b) and t(a => b)
+	call t1
+
+guard g1 when s(* => b) and not f
+	call m1
+
+trigger e2 when f(0 => 1) and t(b => a)
+    call t2

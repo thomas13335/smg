@@ -10,10 +10,13 @@ IGNORECASE
 CHARACTERS
  letter = 'A'..'Z' + 'a'..'z'.
  digit = '0'..'9'. 
+ quote = '"'.
+ anyButQuote = ANY - '"'.
 
 TOKENS
  identifier = letter {letter | digit}.
  number = digit {digit}.
+ string = quote {anyButQuote} quote. 
 
 COMMENTS FROM "/*" TO "*/" NESTED
 COMMENTS FROM "//" TO '\n' 
@@ -23,8 +26,13 @@ IGNORE '\r' + '\n' + '\t'
 PRODUCTIONS
 
 	SMG =									(. string name; .)
-		"SMG" Identifier<out name>			(. if(null != SM) { SM.Name = name; } .)
-		{ 
+		"SMG" Identifier<out name>			(. 
+												if(null != SM) { SM.Name = name; } 
+
+												UpdateLocation();
+											.)
+		Options
+		{									(. UpdateLocation(); .)
 			Declare 
 			| 
 			Assert 
@@ -36,6 +44,32 @@ PRODUCTIONS
 		|
 		"EVAL"								(. ICondition c; .)
 		Condition<out c>					(. Result = c; .)
+		.
+
+	Options =								
+		[
+			"NAMESPACE"						(. IdList idlist; .)
+			(
+				DottedList<out idlist>		(. Parameters.Namespace = idlist.ToNamespace(); .)
+				|
+				string						(. Parameters.Namespace = t.val.Trim(new char[] { '\"' }); .)
+			)
+		]
+		[
+			"BASE"							(. IdList idlist; .)
+			DottedList<out idlist>			(. Parameters.BaseClassName = idlist.ToNamespace(); .)
+		]
+		[
+			"LANGUAGE"
+			(
+				"C#"						(. Parameters.Language = "C#"; .)
+				|
+				"jscript"					(. Parameters.Language = "jscript"; .)
+			)
+		]
+		[
+			"PARTIAL"						(. Parameters.IsPartial = true; .)
+		]
 		.
 
 	Declare 
@@ -57,7 +91,15 @@ PRODUCTIONS
 		Condition<out cond>					(. SM.AddAssertion(cond); .)
 		.
 
-	Trigger									(. ICondition cond; string name; Event e; Trigger trigger; EffectList effects;  .)
+	Trigger									(. 
+												ICondition cond; 
+												string name; 
+												Event e; 
+												Trigger trigger; 
+												EffectList effects; 
+
+												UpdateLocation();
+											.)
 	=
 		"TRIGGER"
 		Identifier<out name>				(. e = SM.AddEvent(name); .)
@@ -68,7 +110,7 @@ PRODUCTIONS
 				ActionList<out effects>		(. trigger.AddEffects(effects); .)
 			]
 											(. 
-												SM.CurrentLocation = Location;
+												UpdateLocation();
 												SM.AddTrigger(trigger); 
 											.)
 		}
@@ -108,12 +150,6 @@ PRODUCTIONS
 		"SEND" Identifier<out name>			(. effect = new SendEffect(SM, name); .)
 		|
 		"CALL" Identifier<out name>			(. effect = new CallEffect(SM, name); .)
-		/* |
-		"BEGIN"
-		{
-			Trigger | Guard | Action<out effect>
-		}
-		"END" */
 		.
 		
 
@@ -174,7 +210,10 @@ PRODUCTIONS
 	=									
 		Identifier<out name>					(. stype = SM.GetStateType(name); .)
 		[									
-			'('									(. if(null != stype) throw new Exception("SMGXXX: type is already defined."); .)
+			'('									(. if(null != stype) 
+														throw new CompilerException(ErrorCode.TypeRedefinition, 
+															"type '" + name + "' is already defined."); 
+												.)
 												(. stype = SM.AddSimpleType(name); .)
 												(. IdList list; .)
 			 IdentifierList<out list>			(. stype.AddStateNames(list); .)
@@ -182,7 +221,10 @@ PRODUCTIONS
 												
 												(. stype.Freeze(); .)
 		]
-												(. if(null == stype) throw new Exception("SMG023: type " + name + " is undefined."); .)
+												(. if(null == stype)
+													 throw new CompilerException(ErrorCode.UndefinedType, 
+														"type '" + name + "' is undefined."); 
+												.)
 		.										
 
 	IdentifierList<out IdList list>				(. list = new IdList(); string name; .)
@@ -197,5 +239,11 @@ PRODUCTIONS
 		identifier								(. name = t.val; .)
 		.
 		
+	DottedList<out IdList list>					(. list = new IdList(); string name; .)
+	= 
+		Identifier<out name>					(. list.Add(name); .)
+		{ '.' Identifier<out name>				(. list.Add(name); .)
+		}
+		.
 
 END SMG.

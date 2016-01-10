@@ -15,6 +15,15 @@ namespace SMG.Common.Conditions
         
         public override bool IsInverted { get { return 0 == StateIndex; } }
 
+        public override string CacheKey
+        {
+            get
+            {
+                var result = IsInverted ? "!" : string.Empty;
+                return result + base.CacheKey;
+            }
+        }
+
         #endregion
 
         #region Construction
@@ -78,14 +87,14 @@ namespace SMG.Common.Conditions
             return new BooleanCondition(this, StateIndex == 0 ? 1 : 0);
         }
 
-        public override void Emit(CodeWriter writer)
+        public override void Emit(ICodeGateEvaluator writer)
         {
             if(IsInverted)
             {
                 writer.Append("!");
             }
 
-            writer.Append(Variable.Name);
+            writer.EmitVariable(Variable);
         }
 
         public override IGate CreateElementaryCondition(int stateindex)

@@ -17,15 +17,21 @@ namespace SMG.Common.Code
 
         public bool IsBaseClassTemplate { get; set; }
 
+        public bool IsPartial { get; set; }
+
         public string DefaultProtection { get; set; }
 
+        public bool IsProcessEventPublic { get; set; }
+
         public string Namespace { get; set; }
+
+        public string Language { get; set; }
 
         public CodeParameters()
         {
             EventTypeName = "EventCode";
             DefaultProtection = "public";
-            Namespace = "SMG.DIGID";
+            Language = "C#";
         }
 
     }

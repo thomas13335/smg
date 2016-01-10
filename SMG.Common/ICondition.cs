@@ -28,6 +28,8 @@ namespace SMG.Common
     /// </summary>
     public interface ICondition
     {
+        string Key { get; }
+
         /// <summary>
         /// Child elements of this condition.
         /// </summary>
@@ -68,10 +70,14 @@ namespace SMG.Common
         /// </summary>
         Variable Variable { get; }
 
+        IVariableCondition Parent { get; }
+
         /// <summary>
         /// The index of the state of the variable this condition applies to.
         /// </summary>
         int StateIndex { get; }
+
+        bool IsTransition { get; }
 
         /// <summary>
         /// Creates an elementary condition corresponding to this condition.

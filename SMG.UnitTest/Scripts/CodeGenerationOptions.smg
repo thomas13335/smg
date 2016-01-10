@@ -1,0 +1,17 @@
+﻿smg CodeGenerationOptions
+
+namespace Test.Code
+language jscript
+partial
+
+declare Loop(a, b, c)
+declare Loop u, v
+declare boolean f
+
+trigger Forward when u(a => b) or u(b => c) 
+
+trigger Forward when u(c => a) and (v(a => b) or v(b => c) or v(c => a))
+
+trigger Forward when u(c => a) and v(c => a) and f(0 => 1)
+
+trigger Forward when u(c => a) and v(c => a) and f(1 => 0)

@@ -39,6 +39,8 @@ namespace SMG.Common
 
         public virtual string SeparatorOperator { get { return string.Empty; } }
 
+        public string CacheKey { get { return ToString(); } }
+
         #endregion
 
         #region Construction
@@ -163,17 +165,19 @@ namespace SMG.Common
         {
             if (IsFrozen)
             {
-                throw new CompilerException(45, "frozen gate cannot be modified.");
+                throw new InvalidOperationException("frozen gate cannot be modified.");
             }
         }
 
         #endregion
 
+        #region IGate
+
         public virtual void Freeze(string gateid)
         {
             if (null != _id)
             {
-                throw new CompilerException(46, "gate identifier already assigned.");
+                throw new InvalidOperationException("gate identifier already assigned.");
             }
 
             _id = gateid;
@@ -183,7 +187,7 @@ namespace SMG.Common
         /// Emits the gate into a code writer.
         /// </summary>
         /// <param name="writer"></param>
-        public virtual void Emit(CodeWriter writer)
+        public virtual void Emit(ICodeGateEvaluator writer)
         {
             if(Type.IsFixed())
             {
@@ -218,6 +222,8 @@ namespace SMG.Common
                 }
             }
         }
+
+        #endregion
 
         #region Gate Factory
 

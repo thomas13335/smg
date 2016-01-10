@@ -65,10 +65,10 @@ namespace SMG.Common.Code
             }
             else
             {
-                var gtext = g.ToString();
+                var key = g.CacheKey;
 
                 // try to find, including parents
-                IGate r = Lookup(gtext);
+                IGate r = Lookup(key);
 
                 if (null == r)
                 {
@@ -76,7 +76,7 @@ namespace SMG.Common.Code
                     var gateid = "#" + _seed++;
                     g.Freeze(gateid);
 
-                    _map[gtext] = r = g;
+                    _map[key] = r = g;
                     _list.Add(r);
                 }
 
@@ -90,15 +90,13 @@ namespace SMG.Common.Code
             foreach(var e in _list)
             {
                 IGate original = null;
+                sb.AppendFormat("  {0,-5} {1,-24} {2,-16}", e.ID, e.GetType().Name, e);
                 if (e is LabelGate)
                 {
                     original = ((LabelGate)e).OriginalGate;
-                    sb.AppendFormat("  {0,-5} {1,-24} {2,-16} {3}", e.ID, e.GetType().Name, e, original);
+                    sb.AppendFormat(" {1}", original);
                 }
-                else
-                {
-                    sb.AppendFormat("  {0,-5} {1,-24} {2}", e.ID, e.GetType().Name, e);
-                }
+
                 sb.AppendLine();
             }
 

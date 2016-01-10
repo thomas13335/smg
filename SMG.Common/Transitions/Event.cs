@@ -80,5 +80,17 @@ namespace SMG.Common.Transitions
             EffectsAfter = after;
             PreCondition = c.PreCondition;
         }
+
+        internal void ClearCalculation()
+        {
+            foreach(var t in _triggers)
+            {
+                t.Clear();
+            }
+
+            EffectsAfter = null;
+            EffectsBefore = null;
+            PreCondition = null;
+        }
     }
 }

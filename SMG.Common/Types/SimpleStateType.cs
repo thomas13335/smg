@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SMG.Common.Exceptions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -41,7 +42,7 @@ namespace SMG.Common.Types
         {
             if (null != _names)
             {
-                throw new Exception("SMG010: object is frozen.");
+                throw new InvalidOperationException("object is frozen.");
             }
 
             _names = names.ToList();
@@ -57,7 +58,8 @@ namespace SMG.Common.Types
             var index = _names.IndexOf(name);
             if (index < 0)
             {
-                throw new Exception("SMG011: state '" + name + "' not found in type '" + Name + "'.");
+                throw new CompilerException(ErrorCode.InvalidStateName,
+                    "state '" + name + "' not found in type '" + Name + "'.");
             }
 
             return index;

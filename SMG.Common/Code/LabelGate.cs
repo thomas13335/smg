@@ -58,7 +58,7 @@ namespace SMG.Common.Code
             Label.Schedule();
         }
 
-        public override void Emit(CodeWriter writer)
+        public override void Emit(ICodeGateEvaluator writer)
         {
             if (Label.IsEvaluated)
             {

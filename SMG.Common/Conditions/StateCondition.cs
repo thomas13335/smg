@@ -38,7 +38,7 @@ namespace SMG.Common.Conditions
 
         public bool IsTransition { get { return PostWildcard || PostStateIndexes.Any(); } }
 
-        public StateCondition Parent { get; private set; }
+        public IVariableCondition Parent { get; private set; }
 
         #endregion
 
@@ -229,7 +229,7 @@ namespace SMG.Common.Conditions
 
             if (source.Length > 1)
             {
-                throw new CompilerException(25, "boolean state condition never satisfied.");
+                throw new CompilerException(ErrorCode.ConditionNeverSatisfied, "boolean state condition never satisfied.");
             }
 
             var c = CreateElementaryCondition(source.First());

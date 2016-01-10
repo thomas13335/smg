@@ -34,5 +34,10 @@ namespace SMG.Common.Conditions
             var namelist = names.Split(new char[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
             return new IdList(namelist);
         }
+
+        public string ToNamespace()
+        {
+            return this.ToSeparatorList(".");
+        }
     }
 }

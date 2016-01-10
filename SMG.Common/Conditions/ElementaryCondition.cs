@@ -25,7 +25,17 @@ namespace SMG.Common.Conditions
             get { return Variable.Address + StateIndex; }
         }
 
+        public override string CacheKey
+        {
+            get
+            {
+                return base.CacheKey + "(" + Variable.Type.GetStateName(StateIndex) + ")";
+            }
+        }
+
         #endregion
+
+        #region Construction
 
         public ElementaryCondition(IVariableCondition parent, int i)
             : base(parent)
@@ -39,6 +49,8 @@ namespace SMG.Common.Conditions
         {
             StateIndex = i;
         }
+
+        #endregion
 
         #region Diagnostics
 
@@ -54,6 +66,8 @@ namespace SMG.Common.Conditions
         }
 
         #endregion
+
+        #region Overrides
 
         public override Factor CreateFactor()
         {
@@ -73,17 +87,20 @@ namespace SMG.Common.Conditions
             return r;
         }
 
-        public override void Emit(CodeWriter writer)
+        public override void Emit(ICodeGateEvaluator writer)
         {
-            var type = Variable.Type;
+            writer.EmitVariableStateCondition(Variable, StateIndex);
+            /*var type = Variable.Type;
             var rval = type.Name + "." + type.GetStateName(StateIndex);
             var lval = Variable.Name;
-            writer.Append(lval + " == " + rval);
+            writer.Append(lval + " == " + rval);*/ 
         }
 
         public override IGate CreateElementaryCondition(int stateindex)
         {
             return Parent.CreateElementaryCondition(stateindex);
         }
+
+        #endregion
     }
 }

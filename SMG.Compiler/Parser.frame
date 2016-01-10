@@ -28,12 +28,14 @@ Coco/R itself) does not fall under the GNU General Public License.
 using System;
 using System.IO;
 using System.Text;
+using System.Collections.Generic;
 using SMG.Common;
 using SMG.Common.Conditions;
 using SMG.Common.Transitions;
 using SMG.Common.Types;
 using SMG.Common.Effects;
 using SMG.Common.Code;
+using SMG.Common.Exceptions;
 
 -->namespace
 namespace SMG.Compiler
@@ -56,12 +58,31 @@ public class Parser {
 	internal StateMachine SM { get; set; }
 	internal ICondition Result { get; set; }
 	internal CodeLocation Location { get { return new CodeLocation(scanner.Line, scanner.Column); } }
+	internal CodeParameters Parameters { get; set; }
+
+	public event SyntaxErrorHandler OnSyntaxError;
+
+	internal void TriggerError(Exception ex)
+	{
+		if(null != OnSyntaxError) 
+		{
+			OnSyntaxError(this, new SyntaxErrorEventArgs(ex));
+		}
+	}
+
+	private void UpdateLocation()
+	{
+		if(null != SM) 
+		{
+			SM.SetLocation(Location);
+		}
+	}
 
 -->declarations
 
 	public Parser(Scanner scanner) {
 		this.scanner = scanner;
-		errors = new Errors();
+		errors = new Errors(this);
 	}
 
 	void SynErr (int n) {
@@ -131,19 +152,22 @@ public class Parser {
 } // end Parser
 
 
+
 public class Errors {
 	public int count = 0;                                    // number of errors detected
 	public System.IO.TextWriter errorStream = Console.Out;   // error messages go to this stream
 	public string errMsgFormat = "sourcefile({0}, {1}): error: {2}"; // 0=line, 1=column, 2=text
 	private StringBuilder sb = new StringBuilder();
+	private Parser parser;
 
 	public override string ToString()
 	{
 		return sb.ToString();
 	}
 
-	public Errors()
+	public Errors(Parser parser)
 	{
+		this.parser = parser;
 		errorStream = new StringWriter(sb);
 	}
 
@@ -153,7 +177,10 @@ public class Errors {
 -->errors
 			default: s = "error " + n; break;
 		}
-		errorStream.WriteLine(errMsgFormat, line, col, s);
+		//errorStream.WriteLine(errMsgFormat, line, col, s);
+		//_errors.Add();
+		var ex = new SyntaxErrorException(new CodeLocation(line, col), s);
+		parser.TriggerError(ex);
 		count++;
 	}
 

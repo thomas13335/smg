@@ -24,6 +24,9 @@ namespace SMG.Common
     {
         #region Private
 
+        private enum ArmState { modify, error, dependencies, ready }
+        private ArmState _state;
+
         private int _nextaddress = 0;
         private Dictionary<string, StateType> _types = new Dictionary<string, StateType>();
         private Dictionary<string, Variable> _variables = new Dictionary<string, Variable>();
@@ -37,6 +40,10 @@ namespace SMG.Common
         #endregion
 
         #region Properties
+
+        public bool IsFailed { get { return _state == ArmState.error; } }
+
+        public bool IsPrepared { get { return _state == ArmState.ready; } }
 
         /// <summary>
         /// The variables making up this state machine.
@@ -69,14 +76,12 @@ namespace SMG.Common
         /// </summary>
         public string SourceFile { get; set; }
 
+        /// <summary>
+        /// Optionally return the current SMG code location.
+        /// </summary>
         public CodeLocation CurrentLocation
         {
             get { return _current; }
-            set
-            {
-                value.SourceFile = SourceFile;
-                _current = value;
-            }
         }
 
         public IEnumerable<Exception> Errors { get { return _errors; } }
@@ -177,7 +182,7 @@ namespace SMG.Common
         {
             if(null != GetStateType(id))
             {
-                throw new CompilerException(21, "type '" + id + "' is already defined.");
+                throw new CompilerException(ErrorCode.TypeRedefinition, "type '" + id + "' is already defined.");
             }
 
             var stype = new SimpleStateType(id);
@@ -198,7 +203,8 @@ namespace SMG.Common
         {
             if(_variables.ContainsKey(id))
             {
-                throw new Exception("SMG010: variable '" + id + "' already exists." );
+                throw new CompilerException(ErrorCode.VariableRedefinition, 
+                    "variable '" + id + "' already exists.");
             }
 
             var result = new Variable(id, declaration);
@@ -220,7 +226,7 @@ namespace SMG.Common
             Variable v;
             if(!_variables.TryGetValue(varname, out v))
             {
-                throw new Exception("SMG019: variable '" + varname + "' undefined.");
+                throw new CompilerException(ErrorCode.UndefinedVariable, "variable '" + varname + "' undefined.");
             }
 
             return v;
@@ -266,7 +272,7 @@ namespace SMG.Common
             }
             else if (_guards.ContainsKey(name))
             {
-                throw new CompilerException(33, "guard '" + name + "' already exists.");
+                throw new CompilerException(ErrorCode.GuardNameReused, "guard '" + name + "' already exists.");
             }
 
             var guard = new Guard(name, gtype, c);
@@ -308,6 +314,8 @@ namespace SMG.Common
         public void AddTrigger(Trigger trigger)
         {
             var e = trigger.Event;
+
+            SetModify();
 
             try
             {
@@ -351,6 +359,8 @@ namespace SMG.Common
 
                         // replace transitions
                         var tset = new TransitionSet(g);
+                        TraceDependencies("transition set of {0}:\n{1}", g, tset.ToDebugString());
+
                         var pre = ReplaceVariableCondition(g, false);
                         var post = ReplaceVariableCondition(g, true);
 
@@ -383,7 +393,7 @@ namespace SMG.Common
                         product = ReplaceTransitionVariables(product, existingtrigger, false);
                         if (!product.IsFalse())
                         {
-                            throw new CompilerException(10, "ambigous transition conditions [" +
+                            throw new CompilerException(ErrorCode.AmbigousPreCondition, "ambigous transition conditions [" +
                                 existingtrigger.PreCondition + ", " + t1.PreCondition + "].");
                         }
                     }
@@ -407,10 +417,25 @@ namespace SMG.Common
 
         #endregion
 
+        public void Calculate()
+        {
+            if (_state == ArmState.modify)
+            {
+                CalculateDependencies();
+                CalculateEffects();
+
+                SetArmState(ArmState.ready);
+            }
+            else if(_state != ArmState.ready)
+            {
+                throw new InvalidOperationException("cannot calculate statemachine.");
+            }
+        }
+
         /// <summary>
         /// Calculates dependencies between triggers and guards.
         /// </summary>
-        public void CalculateDependencies()
+        private void CalculateDependencies()
         {
             TraceDependencies("calculate dependencies ...");
             foreach (var e in _events.Values)
@@ -544,7 +569,7 @@ namespace SMG.Common
             }
         }
 
-        public void CalculateEffects()
+        private void CalculateEffects()
         {
             foreach (var e in _events.Values)
             {
@@ -552,31 +577,30 @@ namespace SMG.Common
             }
         }
 
-        public string GenerateCode()
-        {
-            Trace("\ngenerating code ...");
-            var sb = new CodeWriter();
-            var generator = new CSharpCodeGenerator(sb);
-
-            generator.Emit(this);
-
-
-
-
-            //App.Trace("code:\n{0}", sb);
-            return sb.ToString();
-        }
-
         #endregion
 
-        private void AddError(CompilerException ex)
+        #region Error Handling
+
+        public void SetLocation(CodeLocation location)
+        {
+            _current = location;
+        }
+
+        public void AddError(CompilerException ex)
         {
             if (null == ex.Location)
             {
                 ex.Location = CurrentLocation;
             }
 
+            if (null != ex.Location)
+            {
+                ex.Location.SourceFile = SourceFile;
+            }
+
             _errors.Add(ex);
+
+            SetArmState(ArmState.error);
 
             if(null != ex.Location)
             {
@@ -587,6 +611,8 @@ namespace SMG.Common
                 Trace("{0}", ex.Message);
             }
         }
+
+        #endregion
 
         #region Private Methods
 
@@ -620,7 +646,8 @@ namespace SMG.Common
                 var count = tlist.Count();
                 if (1 != tlist.Count())
                 {
-                    throw new CompilerException(10, "multiple transitions for variable '" + c.Variable + "'.");
+                    throw new CompilerException(ErrorCode.AmbigousPreCondition, 
+                        "multiple transitions for variable '" + c.Variable + "'.");
                 }
 
                 // unique post state required
@@ -628,7 +655,8 @@ namespace SMG.Common
                 var stateindexes = post ? t.NewStateIndexes : t.PreStateIndexes;
                 if (stateindexes.Length != 1)
                 {
-                    throw new CompilerException(10, "ambigous variable condition.");
+                    throw new CompilerException(ErrorCode.AmbigousPreCondition, 
+                        "ambigous variable condition.");
                 }
 
                 result = c.CreateElementaryCondition(stateindexes.First());
@@ -701,6 +729,36 @@ namespace SMG.Common
             }
 
             return result;
+        }
+
+        private void SetModify()
+        {
+            if(_state != ArmState.modify && _state != ArmState.error)
+            {
+                SetArmState(ArmState.modify);
+            }
+        }
+
+        private void SetArmState(ArmState newstate)
+        {
+            if(_state != newstate)
+            {
+                // Trace("smg: arm: {0} -> {1}", _state, newstate);
+                _state = newstate;
+
+                if(_state == ArmState.modify)
+                {
+                    ClearCalculations();
+                }
+            }
+        }
+
+        private void ClearCalculations()
+        {
+            foreach(var e in Events)
+            {
+                e.ClearCalculation();
+            }
         }
 
         #endregion

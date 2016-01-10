@@ -1,4 +1,5 @@
 ﻿using SMG.Common;
+using SMG.Common.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,7 +12,7 @@ namespace SMG.Compiler
     /// <summary>
     /// Converts a smg source file into target source code.
     /// </summary>
-    public class ConverterTool
+    public class ConverterTool : StateMachineCompiler
     {
         #region Public Methods
 
@@ -62,44 +63,27 @@ namespace SMG.Compiler
                 var fullpath = Path.GetFullPath(filename);
                 var outputfile = fullpath + ".cs";
 
-                var sm = new StateMachine();
-                var scanner = new Scanner(fullpath);
-                var parser = new Parser(scanner);
-                parser.SM = sm;
+                SM.SourceFile = fullpath;
 
-                try
+                using (var stream = File.OpenRead(fullpath))
                 {
-                    parser.Parse();
-
-                    if (parser.errors.count > 0)
-                    {
-                        throw new Exception(parser.errors.ToString());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    var msg = fullpath + "(" + scanner.Line + "," + scanner.Column + "): error: " + ex.Message;
-
-                    Print("{0}", msg);
-                    result = 1;
+                    CompileStream(stream);
                 }
 
-                if (0 == result)
+                GenerateCode();
+
+                using (var writer = File.CreateText(outputfile))
                 {
-
-                    sm.CalculateDependencies();
-                    var code = sm.GenerateCode();
-
-                    using (var writer = new StreamWriter(outputfile))
-                    {
-                        writer.WriteLine(code);
-                    }
-
-                    Print("smg: code file '{0}' generated.", outputfile);
+                    writer.Write(Output);
                 }
-                else
+
+                Print("generated file '{0}'.", outputfile);
+            }
+            catch (AggregateException ex)
+            {
+                foreach (var subex in ex.InnerExceptions.OfType<CompilerException>())
                 {
-                    Print("smg: parsing failed.");
+                    Print("{0}: error {1}", subex.Location, subex.Message);
                 }
             }
             catch (Exception ex)

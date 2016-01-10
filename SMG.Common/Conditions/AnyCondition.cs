@@ -7,8 +7,16 @@ using System.Threading.Tasks;
 
 namespace SMG.Common.Conditions
 {
-    class AnyCondition : Condition
+    /// <summary>
+    /// A condition that is always true.
+    /// </summary>
+    public class AnyCondition : Condition
     {
+        public override string ToString()
+        {
+            return "ANY";
+        }
+
         public override IGate Decompose(ConditionMode mode)
         {
             return new TrueGate();

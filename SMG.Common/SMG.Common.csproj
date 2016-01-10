@@ -16,7 +16,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -26,7 +26,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -45,7 +45,7 @@
     <Compile Include="Code\CodeLocation.cs" />
     <Compile Include="Code\CodeParameters.cs" />
     <Compile Include="Code\CodeWriter.cs" />
-    <Compile Include="Code\CSharpCodeGenerator.cs" />
+    <Compile Include="Generators\CSharpCodeGenerator.cs" />
     <Compile Include="Code\ICodeLabelEvaluator.cs" />
     <Compile Include="Code\ITriggerConditions.cs" />
     <Compile Include="Code\TriggerConditions.cs" />
@@ -71,11 +71,15 @@
     <Compile Include="Effects\CallEffect.cs" />
     <Compile Include="Effects\SendEffect.cs" />
     <Compile Include="Exceptions\CompilerException.cs" />
+    <Compile Include="Exceptions\ErrorCode.cs" />
+    <Compile Include="Exceptions\SyntaxErrorHandler.cs" />
+    <Compile Include="Exceptions\SyntaxErrorException.cs" />
     <Compile Include="GateOperations.cs" />
     <Compile Include="Gates\CompositeGate.cs" />
     <Compile Include="Gates\ConstantGate.cs" />
     <Compile Include="Gates\TrueGate.cs" />
     <Compile Include="GateType.cs" />
+    <Compile Include="Generators\JScriptCodeGenerator.cs" />
     <Compile Include="ICondition.cs" />
     <Compile Include="Conditions\IdList.cs" />
     <Compile Include="IGate.cs" />

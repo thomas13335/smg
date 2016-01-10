@@ -131,7 +131,8 @@ namespace SMG.Common.Transitions
                 if(vt.Count > 1)
                 {
                     // multiple transitions for the same variable not allowed.
-                    throw new CompilerException(14, "ambigous post conditions in state transition [" + vt.ToSeparatorList() + "].");
+                    throw new CompilerException(ErrorCode.AmbigousPostCondition, 
+                        "ambigous post conditions in state transition [" + vt.ToSeparatorList() + "].");
                 }
 
                 foreach(var t in vt)
@@ -139,7 +140,8 @@ namespace SMG.Common.Transitions
                     if(t.NewStateIndexes.Length != 1)
                     {
                         // multistate post
-                        throw new CompilerException(15, "ambigous post conditions in state transition [" + t.Parent + "].");
+                        throw new CompilerException(ErrorCode.AmbigousPostCondition, 
+                            "ambigous post conditions in state transition [" + t.Parent + "].");
                     }
                 }
             }

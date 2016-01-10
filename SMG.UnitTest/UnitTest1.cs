@@ -13,6 +13,9 @@ using System.Text;
 using System.Collections.Generic;
 using SMG.Common.Code;
 using SMG.Common.Effects;
+using SMG.Common.Exceptions;
+using Microsoft.CSharp;
+using System.CodeDom.Compiler;
 
 namespace SMG.UnitTest
 {
@@ -152,7 +155,7 @@ namespace SMG.UnitTest
                 c2.SetPreStates("A");
             }
 
-            sm.CalculateDependencies();
+            sm.Calculate();
 
             // sm.Dump();
 
@@ -175,7 +178,7 @@ namespace SMG.UnitTest
         public void SMG_04_00_Basic()
         {
             var cc = new StateMachineCompiler();
-            var sm = cc.CompileString(
+            cc.CompileString(
                 "SMG BasicTest " +
                 "DECLARE State (a, b) s, t " +
                 "DECLARE BOOLEAN f " +
@@ -186,8 +189,8 @@ namespace SMG.UnitTest
                 ""
                 );
 
-            sm.CalculateDependencies();
-            sm.CalculateEffects();
+            var sm = cc.SM;
+            sm.Calculate();
 
             ValidateEventEffectCondition(sm, "e1", "q1", "s(a)t(b)f");
             ValidateEventEffectCondition(sm, "e2", "q1", "s(b)t(a)f");
@@ -198,7 +201,7 @@ namespace SMG.UnitTest
         public void SMG_04_01_EnterLeaveGuards()
         {
             var cc = new StateMachineCompiler();
-            var sm = cc.CompileString(
+            cc.CompileString(
                 "SMG test \n" +
                 "DECLARE State (a, b) s, t, x\n" +
                 "TRIGGER e1 WHEN s(a => b) " +
@@ -209,8 +212,8 @@ namespace SMG.UnitTest
                 ""
                 );
 
-            sm.CalculateDependencies();
-            sm.CalculateEffects();
+            var sm = cc.SM;
+            sm.Calculate();
 
             ValidateEventEffectCondition(sm, "e1", "q1", "s(a)t(b)");
             ValidateEventEffectCondition(sm, "e2", "q1", "s(b)t(a)");
@@ -231,8 +234,7 @@ namespace SMG.UnitTest
                 ""
                 );
 
-            sm.CalculateDependencies();
-            sm.CalculateEffects();
+            sm.Calculate();
 
             PrintEventEffectConditions(sm);
 
@@ -267,22 +269,28 @@ namespace SMG.UnitTest
         {
             TraceFlags.ShowDepencencyAnalysis = true;
             var cc = new StateMachineCompiler();
-            var sm = cc.CompileString(
-                "SMG test " +
-                "DECLARE State (a, b, c) s, t " +
-                "TRIGGER e1 WHEN s(a => b) OR s(a => c) CALL m1" +
-                ""
-                );
 
-            sm.CalculateDependencies();
-            sm.CalculateEffects();
-
-            PrintEventEffectConditions(sm);
-
-            /*using (var w = new StreamWriter(@"c:\work\tmp\smg.cs"))
+            try
             {
-                w.Write(sm.GenerateCode());
-            }*/
+                var sm = cc.CompileString(
+                    "SMG test " +
+                    "DECLARE State (a, b, c) s, t " +
+                    "TRIGGER e1 WHEN s(a => b) OR s(a => c) CALL m1" +
+                    ""
+                    );
+
+                Assert.Fail("exception expected.");
+            }
+            catch(Exception ex)
+            {
+                Assert.IsInstanceOfType(ex, typeof(AggregateException));
+                ex = ex.InnerException;
+
+                Assert.IsInstanceOfType(ex, typeof(CompilerException));
+                var cex = (CompilerException)ex;
+
+                Assert.AreEqual(ErrorCode.AmbigousPostCondition, cex.Code);
+            }
         }
 
         [TestMethod]
@@ -329,28 +337,11 @@ namespace SMG.UnitTest
             var c3 = new StateCondition(v);
             c2.SetPreStates(new[] { 0 });
 
-            IGate g;
-
-            //var c1dc = Gate.Invert(c1);
-            //Trace("0 === {0}", c1dc);
-
             var c1dc = Gate.ComposeAND(Gate.Invert(c1.Decompose(ConditionMode.Pre)), Gate.Invert(c2.Decompose(ConditionMode.Pre)));
-            // var c1dc = Gate.Invert(c1);
-            //var c1dc = c1.Decompose();
 
             Trace("1 === {0}", c1dc);
 
-            /*var ic1 = Gate.Invert(c1dc);
-            Trace("2 === {0}", ic1);*/
-
             return;
-
-            //g = Gate.ComposeAND(Gate.Invert(c1), c2);
-            //g = Gate.ComposeAND(g, Gate.Invert(c3));
-
-
-
-            Trace("{0}", g);
         }
 
         /// <summary>
@@ -365,8 +356,7 @@ namespace SMG.UnitTest
             var smgtext = ReadEmbeddedScript("StandardConditions.smg");
             var sm = cc.CompileString(smgtext);
 
-            sm.CalculateDependencies();
-            sm.CalculateEffects();
+            sm.Calculate();
 
 
             ValidateEventEffectCondition(sm, "e1", "ge1", "s(a) + t(a)");
@@ -391,10 +381,126 @@ namespace SMG.UnitTest
             var smgtext = ReadEmbeddedScript("MixedConditions.smg");
             var sm = cc.CompileString(smgtext);
 
-            sm.CalculateDependencies();
-            sm.CalculateEffects();
+            sm.Calculate();
 
             ValidateEventEffectCondition(sm, "e1", "m1", "s(a)t(a)");
+        }
+
+        [TestMethod]
+        public void SMG_04_08_SyntaxErrors()
+        {
+            var cc = new StateMachineCompiler();
+            cc.SM.SourceFile = "testfile.smg";
+
+            try
+            {
+                var sm = cc.CompileString("SMG Fails TRIGGER x AND TRIGGER y ");
+                Assert.Fail("exception expected.");
+            }
+            catch (Exception ex)
+            {
+                Assert.IsInstanceOfType(ex, typeof(AggregateException));
+                var cex = (CompilerException)ex.InnerException;
+                Assert.AreEqual(ErrorCode.SyntaxError, cex.Code);
+                Assert.AreEqual(cc.SM.SourceFile, cex.Location.SourceFile);
+            }
+        }
+
+        /// <summary>
+        /// Compiles and executes a statemachine.
+        /// </summary>
+        [TestMethod]
+        public void SMG_05_01_CodeGeneration()
+        {
+            var cc = new StateMachineCompiler();
+            cc.CompileString(ReadEmbeddedScript("CodeGeneration.smg"));
+
+            cc.GenerateCode();
+            Assert.AreEqual(2, cc.SM.Events.Count());
+
+            var u = cc.SM.AddEvent("u");
+            var trigger = new Trigger(u, cc.EvaluateCondition("s(b => a)"));
+            trigger.AddEffects(new[] { new CallEffect(cc.SM, "m") });
+            cc.SM.AddTrigger(trigger);
+
+            Assert.IsFalse(cc.SM.IsPrepared);
+
+            cc.Parameters.IsProcessEventPublic = true;
+
+            cc.GenerateCode();
+
+            Assert.IsTrue(cc.SM.IsPrepared);
+            Assert.AreEqual(3, cc.SM.Events.Count());
+
+            Trace("output:\n{0}", cc.Output);
+
+            var csharp = new CSharpCodeProvider();
+            var options = new CompilerParameters();
+
+            var result = csharp.CompileAssemblyFromSource(options, cc.Output);
+
+            if (result.Errors.Count > 0)
+            {
+                foreach (var e in result.Errors)
+                {
+                    Trace("{0}", e);
+                }
+
+                Assert.Fail("generated code failed to compile.");
+            }
+
+            var dll = result.CompiledAssembly;
+            var type = dll.GetType("CodeGeneration");
+            var eventtype = dll.GetType("EventCode");
+            var events = Enum.GetValues(eventtype);
+
+            var x = Activator.CreateInstance(type);
+
+            var tostatestring = type.GetMethod("ToStateString");
+            Trace("initial state [{0}].", tostatestring.Invoke(x, new object[0]));
+
+            var processevent = type.GetMethod("ProcessEvent");
+            var sendevent = events.GetValue(0);
+            Trace("sending event '{0}' ...", sendevent);
+            processevent.Invoke(x, new object[] { sendevent });
+
+            var statestring = tostatestring.Invoke(x, new object[0]).ToString();
+            Trace("state after [{0}].", statestring);
+
+            Assert.AreEqual("s(b) t(b) f(0)", statestring);
+
+            sendevent = events.GetValue(1);
+            Trace("sending event '{0}' ...", sendevent);
+            processevent.Invoke(x, new object[] { sendevent });
+
+            statestring = tostatestring.Invoke(x, new object[0]).ToString();
+            Trace("state after [{0}].", statestring);
+
+            Assert.AreEqual("s(b) t(a) f(1)", statestring);
+        }
+
+        /// <summary>
+        /// Code generation options.
+        /// </summary>
+        [TestMethod]
+        public void SMG_05_02_CodeGeneration()
+        {
+            // TraceFlags.ShowLabel = true;
+
+            var cc = new StateMachineCompiler();
+            cc.CompileString(ReadEmbeddedScript("CodeGenerationOptions.smg"));
+
+            Assert.AreEqual(true, cc.Parameters.IsPartial);
+            Assert.AreEqual("Test.Code", cc.Parameters.Namespace);
+
+            cc.GenerateCode();
+
+            Trace("output:\n{0}", cc.Output);
+
+            using(var writer = new StreamWriter(@"c:\users\tc\repositories\igra3\prototype\html\smg.js"))
+            {
+                writer.Write(cc.Output);
+            }
         }
 
         [TestMethod]
@@ -403,22 +509,13 @@ namespace SMG.UnitTest
             TraceFlags.ShowDepencencyAnalysis = true;
             var cc = new StateMachineCompiler();
 
-            var sm = cc.CompileString(ReadEmbeddedScript("script1.smg"));
+            var sm = cc.CompileString(ReadEmbeddedScript("script3.smg"));
 
-            // Trace("gatecache: \n{0}", GateCache.Instance.ToDebugString());
-            // sm.Dump();
+            cc.GenerateCode();
 
-            if (true)
-            {
-                sm.CalculateDependencies();
+            Trace("{0}", cc.Output);
 
-                using (var w = new StreamWriter(@"c:\work\tmp\smg.cs"))
-                {
-                    w.Write(sm.GenerateCode());
-                }
-            }
-
-            // Trace("gatecache: \n{0}", GateCache.Instance.ToDebugString());
+            Trace("gatecache: \n{0}", GateCache.Instance.ToDebugString());
         }
 
     }

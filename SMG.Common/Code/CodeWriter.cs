@@ -102,39 +102,6 @@ namespace SMG.Common.Code
 
         #region Emit Methods
 
-        public void EmitIfHeader(IGate condition)
-        {
-            Append("if(");
-            condition.Emit(this);
-            AppendLine(")");
-        }
-
-        public void EmitEnumerationValue(string typename, string valuename)
-        {
-            Append(typename + "." + valuename);
-        }
-
-        public void EmitTypeIdentifier(StateType stype)
-        {
-            if(stype.IsBoolean)
-            {
-                Append("bool");
-            }
-            else
-            {
-                Append(stype.Name);
-            }
-        }
-
-        public void EmitVariableAssignment(Variable v, int stateindex)
-        {
-        }
-
-        internal void EmitHandlerHeader(StateType stype, string name)
-        {
-            AppendLine("protected virtual void " + name + "_Handler()");
-        }
-
         internal void EmitBinaryOperator(GateType type)
         {
             switch(type)

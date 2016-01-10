@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SMG.Common.Exceptions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -40,7 +41,8 @@ namespace SMG.Common.Types
                 }
                 else
                 {
-                    throw new Exception("SMG011: state '" + name + "' not found in type '" + Name + "'.");
+                    throw new CompilerException(ErrorCode.InvalidStateName, 
+                        "state '" + name + "' not found in type '" + Name + "'.");
                 }
             }
         }

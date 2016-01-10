@@ -4,6 +4,7 @@ using SMG.Common.Gates;
 using SMG.Common.Transitions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace SMG.Common.Conditions
@@ -16,6 +17,7 @@ namespace SMG.Common.Conditions
         #region Private
 
         private string _gateid;
+        private IVariableCondition _transparent;
 
         #endregion
 
@@ -42,6 +44,24 @@ namespace SMG.Common.Conditions
 
         public virtual bool IsInverted { get { return false; } }
 
+        public virtual bool IsTransition { get { return false; } }
+
+        public virtual string CacheKey
+        {
+            get
+            {
+                var key = Variable.Name;
+
+                // add parent key if this refers to a state transition condition.
+                if(null != _transparent)
+                {
+                    key += "$" + _transparent.Key;
+                }
+
+                return key;
+            }
+        }
+
         #endregion
 
         #region Construction
@@ -53,23 +73,43 @@ namespace SMG.Common.Conditions
 
         public VariableCondition(IVariableCondition parent)
         {
+            Debug.Assert(parent != this);
             Parent = parent;
             Variable = Parent.Variable;
+
+            var top = Parent;
+            while(null != top)
+            {
+                if(top.IsTransition)
+                {
+                    _transparent = top;
+                    break;
+                }
+
+                top = top.Parent;
+            }
         }
 
         #endregion
 
+        #region Diagnostics
+
         public override string ToString()
         {
+            string result;
             if (TraceFlags.ShowVariableAddress)
             {
-                return Variable.Name + "<" + Group + "," + Address + ">";
+                result = Variable.Name + "<" + Group + "," + Address + ">";
             }
             else
             {
-                return Variable.Name;
+                result = Variable.Name;
             }
+
+            return result;
         }
+
+        #endregion
 
         #region IInput
 
@@ -113,7 +153,7 @@ namespace SMG.Common.Conditions
             throw new NotImplementedException();
         }
 
-        public abstract void Emit(CodeWriter writer);
+        public abstract void Emit(ICodeGateEvaluator writer);
 
         public abstract IGate CreateElementaryCondition(int stateindex);
 

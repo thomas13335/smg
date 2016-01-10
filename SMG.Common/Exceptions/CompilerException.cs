@@ -7,13 +7,24 @@ using System.Threading.Tasks;
 
 namespace SMG.Common.Exceptions
 {
+    /// <summary>
+    /// An exception thrown by the SMG compiler.
+    /// </summary>
     [Serializable]
     public class CompilerException : Exception
     {
+        public ErrorCode Code { get; set; }
+
+        /// <summary>
+        /// Optional source code location.
+        /// </summary>
         public CodeLocation Location { get; set; }
 
-        public CompilerException(int errorcode, string message)
-            : base("SMG" + errorcode.ToString("D3") + ": " + message)
-        { }
+        public CompilerException(ErrorCode code, string message)
+            : base("SMG" + ((int)code).ToString("D3") + ": " + message)
+        {
+            Code = code;
+        }
+
     }
 }
