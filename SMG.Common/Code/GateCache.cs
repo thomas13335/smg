@@ -3,31 +3,38 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SMG.Common.Code
 {
     /// <summary>
-    /// Singleton object serving as a location to store simplified gates.
+    /// Stackable singleton object serving as a location to store simplified gates.
     /// </summary>
+    /// <remarks>
+    /// <para>Assigns a unique identifier to each gate cached.</para></remarks>
     public class GateCache
     {
         #region Private
 
+        class CacheStack : Stack<GateCache>
+        {
+            public CacheStack()
+            {
+                Push(new GateCache(null));
+            }
+        }
+
+        private static ThreadLocal<CacheStack> _stack = new ThreadLocal<CacheStack>(() => new CacheStack());
+
         private static int _seed;
         private Dictionary<string, IGate> _map = new Dictionary<string, IGate>();
         private List<IGate> _list = new List<IGate>();
-        private static Stack<GateCache> _stack = new Stack<GateCache>();
         private GateCache _parent;
 
         #endregion
 
-        public static GateCache Instance { get { return _stack.Peek(); } }
-
-        static GateCache()
-        {
-            _stack.Push(new GateCache(null));
-        }
+        public static GateCache Instance { get { return _stack.Value.Peek(); } }
 
         public GateCache(GateCache parent)
         {
@@ -36,12 +43,18 @@ namespace SMG.Common.Code
 
         public static void Push()
         {
-            _stack.Push(new GateCache(Instance));
+            _stack.Value.Push(new GateCache(Instance));
         }
 
         public static void Pop()
         {
-            _stack.Pop();
+            _stack.Value.Pop();
+        }
+
+        public void Purge()
+        {
+            _map.Clear();
+            _list.Clear();
         }
 
         public IGate AddGate(IGate g)

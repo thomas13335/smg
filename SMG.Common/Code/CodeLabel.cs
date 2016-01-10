@@ -104,14 +104,14 @@ namespace SMG.Common.Code
         }
 
         /// <summary>
-        /// Evaluates the label into a code writer, once.
+        /// Evaluates the label into a code generator, once.
         /// </summary>
-        /// <param name="writer">The code writer.</param>
-        public void Evaluate(CodeGenerator writer)
+        /// <param name="cg">The code writer.</param>
+        public void Evaluate(ICodeLabelEvaluator cg)
         {
             if (!IsEvaluated)
             {
-                EvaluateOnce(writer);
+                EvaluateOnce(cg);
                 IsEvaluated = true;
             }
         }
@@ -120,7 +120,7 @@ namespace SMG.Common.Code
 
         #region Private Methods
 
-        private IGate EvaluateRecurse(CodeGenerator cg, IGate g)
+        private IGate EvaluateRecurse(ICodeLabelEvaluator cg, IGate g)
         {
             if (g.Type == GateType.Input)
             {
@@ -155,7 +155,7 @@ namespace SMG.Common.Code
             return g;
         }
 
-        private void EvaluateOnce(CodeGenerator cg)
+        private void EvaluateOnce(ICodeLabelEvaluator cg)
         {
             var g = EvaluateRecurse(cg, _originalgate);
             cg.EmitCodeLabelAssignment(Name, g);

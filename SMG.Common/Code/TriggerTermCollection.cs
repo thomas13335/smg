@@ -7,9 +7,19 @@ using System.Threading.Tasks;
 
 namespace SMG.Common.Code
 {
+    /// <summary>
+    /// Sum of terms representing a combined pre/post condition pair.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     class TriggerTermCollection<T> : ITriggerConditions
     {
+        #region Private
+
         private List<TransitionMonitor> _sources = new List<TransitionMonitor>();
+
+        #endregion
+
+        #region Properties
 
         public T Context { get; private set; }
 
@@ -19,12 +29,16 @@ namespace SMG.Common.Code
 
         public IGate PostCondition { get; private set; }
 
+        #endregion
+
         public TriggerTermCollection(T context)
         {
             Context = context;
             PreCondition = Gate.Constant(false);
             PostCondition = Gate.Constant(false);
         }
+
+        #region Public Methods
 
         public void Add(ITriggerConditions c)
         {
@@ -37,5 +51,6 @@ namespace SMG.Common.Code
             _sources.Add(source);
         }
 
+        #endregion
     }
 }

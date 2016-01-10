@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Collections;
+using SMG.Common.Code;
 
 
 namespace SMG.Compiler

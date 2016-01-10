@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace SMG.Common.Code
 {
-    public interface ITriggerConditions
+    public interface ICodeLabelEvaluator
     {
-        IGate PreCondition { get; }
-
-        IGate PostCondition { get; }
+        void EmitCodeLabelAssignment(string label, IGate gate);
     }
 }

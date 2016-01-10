@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SMG.Common.Code;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,6 +10,8 @@ namespace SMG.Common.Exceptions
     [Serializable]
     public class CompilerException : Exception
     {
+        public CodeLocation Location { get; set; }
+
         public CompilerException(int errorcode, string message)
             : base("SMG" + errorcode.ToString("D3") + ": " + message)
         { }

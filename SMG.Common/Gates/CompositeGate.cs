@@ -36,7 +36,7 @@ namespace SMG.Common.Gates
                     sb.Append("(");
                 }
 
-                if (TraceOptions.ShowGateTypes)
+                if (TraceFlags.ShowGateTypes)
                 {
                     sb.Append(i.Type + ":");
                 }

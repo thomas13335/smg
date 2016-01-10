@@ -8,13 +8,12 @@ using System.Threading.Tasks;
 
 namespace SMG.Compiler
 {
+    /// <summary>
+    /// Converts a smg source file into target source code.
+    /// </summary>
     public class ConverterTool
     {
-        private void Trace(string format, params object[] args)
-        {
-            var msg = string.Format(format, args);
-            Console.WriteLine(msg);
-        }
+        #region Public Methods
 
         public static int Main(string[] args)
         {
@@ -27,7 +26,8 @@ namespace SMG.Compiler
 
             if (!args.Any())
             {
-                Trace("no arguments specified.");
+                PrintLogo();
+                PrintSyntax();
             }
             else
             {
@@ -42,6 +42,16 @@ namespace SMG.Compiler
             }
 
             return rc;
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        private void Print(string format, params object[] args)
+        {
+            var msg = string.Format(format, args);
+            Console.WriteLine(msg);
         }
 
         private int ProcessFile(string filename)
@@ -70,14 +80,14 @@ namespace SMG.Compiler
                 {
                     var msg = fullpath + "(" + scanner.Line + "," + scanner.Column + "): error: " + ex.Message;
 
-                    Trace("{0}", msg);
+                    Print("{0}", msg);
                     result = 1;
                 }
 
                 if (0 == result)
                 {
 
-                    sm.CalculateTriggerGuardDependencies();
+                    sm.CalculateDependencies();
                     var code = sm.GenerateCode();
 
                     using (var writer = new StreamWriter(outputfile))
@@ -85,19 +95,32 @@ namespace SMG.Compiler
                         writer.WriteLine(code);
                     }
 
-                    Trace("code file '{0}' generated.", outputfile);
+                    Print("smg: code file '{0}' generated.", outputfile);
                 }
                 else
                 {
-                    Trace("parsing failed.");
+                    Print("smg: parsing failed.");
                 }
             }
             catch (Exception ex)
             {
-                Trace("error: {0}", ex.Message);
+                Print("error: {0}", ex.Message);
             }
 
             return result;
         }
+
+        private void PrintLogo()
+        {
+            Print("SMG State Machine Generator, v{0}\n", GetType().Assembly.GetName().Version.ToString(4));
+        }
+
+        private void PrintSyntax()
+        {
+            Print("translates a SMG-file into source code.\n");
+            Print("syntax: smgc {{ <smg-file> }}");
+        }
+
+        #endregion
     }
 }

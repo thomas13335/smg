@@ -68,7 +68,15 @@ namespace SMG.Common
 
         public static void TraceLabel(IGate a, IGate r, string format, params object[] args)
         {
-            if (TraceOptions.ShowLabel)
+            if (TraceFlags.ShowLabel)
+            {
+                TraceGateOp2(a, r, format, args);
+            }
+        }
+
+        public static void TraceDependencies(IGate a, IGate r, string format, params object[] args)
+        {
+            if (TraceFlags.ShowDepencencyAnalysis)
             {
                 TraceGateOp2(a, r, format, args);
             }
@@ -76,7 +84,7 @@ namespace SMG.Common
 
         public static void TraceCompose(IGate a, IGate r, string format, params object[] args)
         {
-            if (TraceOptions.ShowCompose)
+            if (TraceFlags.ShowCompose)
             {
                 TraceGateOp2(a, r, format, args);
             }
@@ -84,7 +92,7 @@ namespace SMG.Common
 
         public static void TraceCompose(IGate a, IGate b, IGate r, string format, params object[] args)
         {
-            if (TraceOptions.ShowCompose)
+            if (TraceFlags.ShowCompose)
             {
                 TraceGateOp3(a, b, r, format, args);
             }
@@ -92,7 +100,7 @@ namespace SMG.Common
 
         public static void TraceDecompose(object a, IGate r, string format, params object[] args)
         {
-            if (TraceOptions.ShowDecompose)
+            if (TraceFlags.ShowDecompose)
             {
                 TraceGateOp2(a, r, format, args);
             }
@@ -100,7 +108,7 @@ namespace SMG.Common
 
         protected static void TraceSimplify(IGate a, IGate r, string format, params object[] args)
         {
-            if (TraceOptions.ShowSimplify)
+            if (TraceFlags.ShowSimplify)
             {
                 TraceGateOp2(a, r, format, args);
             }
@@ -108,7 +116,7 @@ namespace SMG.Common
 
         protected static void TraceSimplify(string format, params object[] args)
         {
-            if (TraceOptions.ShowSimplify)
+            if (TraceFlags.ShowSimplify)
             {
                 // Debug.WriteLine(format, args);
             }
@@ -602,7 +610,7 @@ namespace SMG.Common
                 }
             }
 
-            if (gate != original && TraceOptions.ShowOptimize)
+            if (gate != original && TraceFlags.ShowOptimize)
             {
                 TraceGateOp2(original, gate, "optimize AND");
             }

@@ -1,0 +1,10 @@
+﻿smg MixedConditions
+
+declare State (a, b) s, t
+declare boolean f
+
+trigger e1 when s(a => b) and t(a => b)
+	call t1
+
+guard g1 when s(* => b) and t(a => b)
+	call m1

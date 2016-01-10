@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace SMG.Common
 {
-    class TraceOptions
+    /// <summary>
+    /// Diagnostics options configuration.
+    /// </summary>
+    public static class TraceFlags
     {
         public static bool ShowDecompose = false;
         public static bool ShowCompose = false;

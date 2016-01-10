@@ -19,10 +19,13 @@ namespace SMG.Common.Code
 
         public string DefaultProtection { get; set; }
 
+        public string Namespace { get; set; }
+
         public CodeParameters()
         {
             EventTypeName = "EventCode";
             DefaultProtection = "public";
+            Namespace = "SMG.DIGID";
         }
 
     }

@@ -85,7 +85,7 @@ namespace SMG.Common.Code
 
         public void AppendComment(string comment = null)
         {
-            if (TraceOptions.EmitComments)
+            if (TraceFlags.EmitComments)
             {
                 if (null != comment)
                 {

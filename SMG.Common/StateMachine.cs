@@ -31,6 +31,8 @@ namespace SMG.Common
         private Dictionary<string, Guard> _guards = new Dictionary<string, Guard>();
         private HashSet<string> _methods = new HashSet<string>();
         private List<IGate> _assertions = new List<IGate>();
+        private List<Exception> _errors = new List<Exception>();
+        private CodeLocation _current;
 
         #endregion
 
@@ -62,6 +64,23 @@ namespace SMG.Common
         /// </summary>
         public string Name { get; set; }
 
+        /// <summary>
+        /// Optional, path of the source file.
+        /// </summary>
+        public string SourceFile { get; set; }
+
+        public CodeLocation CurrentLocation
+        {
+            get { return _current; }
+            set
+            {
+                value.SourceFile = SourceFile;
+                _current = value;
+            }
+        }
+
+        public IEnumerable<Exception> Errors { get { return _errors; } }
+
         #endregion
 
         #region Construction
@@ -88,7 +107,7 @@ namespace SMG.Common
 
         private void TraceVerbose(string format, params object[] args)
         {
-            if (TraceOptions.Verbose)
+            if (TraceFlags.Verbose)
             {
                 Debug.WriteLine(format, args);
             }
@@ -96,10 +115,49 @@ namespace SMG.Common
 
         private void TraceDependencies(string format, params object[] args)
         {
-            if (TraceOptions.ShowDepencencyAnalysis)
+            if (TraceFlags.ShowDepencencyAnalysis)
             {
                 Debug.WriteLine(format, args);
             }
+        }
+
+
+        public void Dump()
+        {
+            var sb = new CodeWriter();
+            sb.AppendLine("state machine dump");
+
+            foreach (var e in _events.Values)
+            {
+                sb.AppendComment();
+                sb.AppendComment("event " + e.Name);
+                foreach (var t in e.Triggers)
+                {
+                    sb.AppendLine("TRIGGER " + t.Name + " WHEN");
+                    sb.AppendLine("  BEFORE [" + t.PreCondition + "] AFTER [" + t.PostCondition + "]");
+                }
+            }
+
+            foreach (var t in Guards)
+            {
+                sb.AppendLine("GUARD " + t.Name + " " + t.Type + " WHEN ");
+                if (t.Type == GuardType.TRANSITION)
+                {
+                    sb.AppendLine("  BEFORE [" + t.PreCondition + "]");
+                    sb.AppendLine("  AFTER [" + t.PostCondition + "]");
+                }
+                else if (t.Type == GuardType.ENTER)
+                {
+                    sb.AppendLine("  AFTER [" + t.PostCondition + "]");
+                }
+                else if (t.Type == GuardType.LEAVE)
+                {
+                    sb.AppendLine("  BEFORE [" + t.PreCondition + "]");
+                }
+            }
+            // sb.AppendLine("matrix:\n" + _matrix);
+
+            Trace("{0}", sb);
         }
 
         #endregion
@@ -251,84 +309,91 @@ namespace SMG.Common
         {
             var e = trigger.Event;
 
-            TraceDependencies("add trigger '{0}' ...", trigger.Name);
-
-            // ValidateTrigger(trigger);
-
-            var tlist = new List<ProductTrigger>();
-
-            // examinate the precondition ...
-            var precondition = trigger.PreCondition;
-
-            if(precondition.Type == GateType.Fixed)
+            try
             {
-                // constant 
-                if(precondition is FalseGate)
+
+                TraceDependencies("add trigger '{0}' ...", trigger.Name);
+
+                // ValidateTrigger(trigger);
+
+                var tlist = new List<ProductTrigger>();
+
+                // examinate the precondition ...
+                var precondition = trigger.PreCondition;
+
+                if (precondition.Type == GateType.Fixed)
                 {
-                    Trace("SMG033: warning: trigger '{0}' precondition is never met.", trigger);
-                }
-                else if(precondition is TrueGate)
-                {
-                    Trace("SMG034: warning: trigger '{0}' precondition is always true.", trigger);
-                }
-            }
-            else if(precondition.Type == GateType.OR)
-            {
-                // OR combination, split into multiple simple triggers
-                var inputs = precondition.GetInputs();
-                TraceDependencies("split trigger [{0}] into its branches ...", inputs.ToSeparatorList());
-
-                // analyze conditions
-                TraceDependencies("{0}", trigger.Transitions.ToDebugString());
-
-                TraceDependencies("evaluating branches ...");
-
-                // split into multiple triggers
-                foreach(var g in inputs)
-                {
-                    TraceDependencies("trigger path [{0}] ...", g);
-
-                    // replace transitions
-                    var tset = new TransitionSet(g);
-                    var pre = ReplaceVariableCondition(g, false);
-                    var post = ReplaceVariableCondition(g, true);
-
-                    TraceDependencies("branch trigger conditions [{0} => {1}].", pre, post);
-
-                    // add branch trigger
-                    tlist.Add(new ProductTrigger(trigger, tset, pre, post));
-                }
-            }
-            else
-            {
-                // add original trigger
-                tlist.Add(new ProductTrigger(trigger));
-            }
-
-            // process resulting triggers
-            foreach (var t1 in tlist)
-            {
-                TraceDependencies("product trigger {0} ...", t1);
-                TraceDependencies("  conditions [{0}, {1}] ...", t1.PreCondition, t1.PostCondition);
-
-                TraceDependencies("transitions:\n{0}", trigger.Transitions.ToDebugString());
-                //trigger.Transitions.QualifyForTrigger();
-                t1.Qualify();
-
-                // check if any existing trigger is conflicting
-                foreach (var existingtrigger in e.Triggers)
-                {
-                    // the new trigger precondition must not intersect any existing precondition
-                    var product = Gate.ComposeAND(existingtrigger.PreCondition, t1.PreCondition);
-                    product = ReplaceTransitionVariables(product, existingtrigger, false);
-                    if(!product.IsFalse())
+                    // constant 
+                    if (precondition is FalseGate)
                     {
-                        throw new CompilerException(10, "ambigous transition conditions [" + 
-                            existingtrigger.PreCondition + ", " + t1.PreCondition + "].");
+                        Trace("SMG033: warning: trigger '{0}' precondition is never met.", trigger);
+                    }
+                    else if (precondition is TrueGate)
+                    {
+                        Trace("SMG034: warning: trigger '{0}' precondition is always true.", trigger);
                     }
                 }
+                else if (precondition.Type == GateType.OR)
+                {
+                    // OR combination, split into multiple simple triggers
+                    var inputs = precondition.GetInputs();
+                    TraceDependencies("split trigger [{0}] into its branches ...", inputs.ToSeparatorList());
 
-                e.Triggers.Add(t1);
+                    // analyze conditions
+                    // TraceDependencies("{0}", trigger.Transitions.ToDebugString());
+
+                    TraceDependencies("evaluating branches ...");
+
+                    // split into multiple triggers
+                    foreach (var g in inputs)
+                    {
+                        TraceDependencies("trigger path [{0}] ...", g);
+
+                        // replace transitions
+                        var tset = new TransitionSet(g);
+                        var pre = ReplaceVariableCondition(g, false);
+                        var post = ReplaceVariableCondition(g, true);
+
+                        TraceDependencies("branch trigger conditions [{0} => {1}].", pre, post);
+
+                        // add branch trigger
+                        tlist.Add(new ProductTrigger(trigger, tset, pre, post));
+                    }
+                }
+                else
+                {
+                    // add original trigger
+                    tlist.Add(new ProductTrigger(trigger));
+                }
+
+                // process resulting triggers
+                foreach (var t1 in tlist)
+                {
+                    TraceDependencies("product trigger {0} ...", t1);
+                    TraceDependencies("  conditions [{0}, {1}] ...", t1.PreCondition, t1.PostCondition);
+
+                    // TraceDependencies("transitions:\n{0}", trigger.Transitions.ToDebugString());
+                    t1.Qualify();
+
+                    // check if any existing trigger is conflicting
+                    foreach (var existingtrigger in e.Triggers)
+                    {
+                        // the new trigger precondition must not intersect any existing precondition
+                        var product = Gate.ComposeAND(existingtrigger.PreCondition, t1.PreCondition);
+                        product = ReplaceTransitionVariables(product, existingtrigger, false);
+                        if (!product.IsFalse())
+                        {
+                            throw new CompilerException(10, "ambigous transition conditions [" +
+                                existingtrigger.PreCondition + ", " + t1.PreCondition + "].");
+                        }
+                    }
+
+                    e.Triggers.Add(t1);
+                }
+            }
+            catch(CompilerException ex)
+            {
+                AddError(ex);
             }
         }
 
@@ -342,7 +407,10 @@ namespace SMG.Common
 
         #endregion
 
-        public void CalculateTriggerGuardDependencies()
+        /// <summary>
+        /// Calculates dependencies between triggers and guards.
+        /// </summary>
+        public void CalculateDependencies()
         {
             TraceDependencies("calculate dependencies ...");
             foreach (var e in _events.Values)
@@ -422,15 +490,20 @@ namespace SMG.Common
                                 gleave = Gate.ComposeAND(t.PostCondition, Gate.Invert(g.PostCondition));
                             }
 
-                            Gate.TraceLabel(genter, gleave, "raw");
+                            Gate.TraceDependencies(genter, gleave, "guard product");
 
-                            // zero all factors not appearing in the trigger
+                            // set all factors not appearing in the trigger to 1
                             genter = ReplaceTransitionVariables(genter, t, true);
                             gleave = ReplaceTransitionVariables(gleave, t, true);
 
-                            Gate.TraceLabel(genter, gleave, "refined");
+                            // set all factors not appearing in the guard to 1
+                            genter = ReplaceNonGuardVariables(genter, g);
+                            gleave = ReplaceNonGuardVariables(gleave, g);
 
-                            if (genter is FalseGate || gleave is FalseGate)
+                            Gate.TraceDependencies(genter, gleave, "guard match");
+
+                            //if (genter is FalseGate || gleave is FalseGate)
+                            if(genter.Type.IsFixed() || gleave.Type.IsFixed())
                             {
                                 TraceDependencies("    condition does not match.");
                                 continue;
@@ -469,23 +542,14 @@ namespace SMG.Common
                     }
                 }
             }
+        }
 
-            /*Trace("\nsummary:");
-
+        public void CalculateEffects()
+        {
             foreach (var e in _events.Values)
             {
-                foreach (var t in e.Triggers)
-                {
-                    Trace("trigger {0} guards {1}", t.Name, t.Guards.Select(v => v.Name).ToSeparatorList());
-                }
+                e.CalculateEffects();
             }
-
-            Trace("\nsummary:");
-
-            foreach (var g in _guards)
-            {
-                Trace("guard {0} triggers {1} pre {2}", g.Name, g.Triggers.Select(v => v.Name).ToSeparatorList(), g.PreCondition);
-            }*/ 
         }
 
         public string GenerateCode()
@@ -505,70 +569,23 @@ namespace SMG.Common
 
         #endregion
 
-        #region Emit
-
-        /*public void EmitEnum(CodeWriter sb, string typename, IEnumerable<string> names)
+        private void AddError(CompilerException ex)
         {
-            sb.Append("public enum " + typename + " { ");
-            sb.Append(names.ToSeparatorList());
-            sb.AppendLine(" }");
-            sb.AppendLine();
-        }*/ 
-
-        #endregion
-
-        public string GetStateString(int state)
-        {
-            var sb = new StringBuilder();
-            foreach(var v in _variables.Values)
+            if (null == ex.Location)
             {
-                var arity = v.Type.Cardinality;
-                var vsi = state % arity;
-                state /= arity;
-
-                if (sb.Length > 0) sb.Append(" ");
-                sb.Append(v.Name + "(" + v.Type.GetStateName(vsi).PadRight(12) + ")");
+                ex.Location = CurrentLocation;
             }
 
-            return sb.ToString();
-        }
+            _errors.Add(ex);
 
-        public void Dump()
-        {
-            var sb = new CodeWriter();
-            sb.AppendLine("state machine dump");
-
-            foreach(var e in _events.Values)
+            if(null != ex.Location)
             {
-                sb.AppendComment();
-                sb.AppendComment("event " + e.Name);
-                foreach (var t in e.Triggers)
-                {
-                    sb.AppendLine("TRIGGER " + t.Name + " WHEN");
-                    sb.AppendLine("  BEFORE [" + t.PreCondition + "] AFTER [" + t.PostCondition + "]");
-                }
+                Trace("{0}: {1}", ex.Location, ex.Message);
             }
-
-            foreach (var t in Guards)
+            else
             {
-                sb.AppendLine("GUARD " + t.Name + " " + t.Type + " WHEN ");
-                if (t.Type == GuardType.TRANSITION)
-                {
-                    sb.AppendLine("  BEFORE [" + t.PreCondition + "]");
-                    sb.AppendLine("  AFTER [" + t.PostCondition+ "]");
-                }
-                else if(t.Type == GuardType.ENTER)
-                {
-                    sb.AppendLine("  AFTER [" + t.PostCondition + "]");
-                }
-                else if(t.Type == GuardType.LEAVE)
-                {
-                    sb.AppendLine("  BEFORE [" + t.PreCondition + "]");
-                }
+                Trace("{0}", ex.Message);
             }
-            // sb.AppendLine("matrix:\n" + _matrix);
-
-            Trace("{0}", sb);
         }
 
         #region Private Methods
@@ -627,6 +644,43 @@ namespace SMG.Common
             return gate
                 .Replace(g => ReplaceTransitionVariablesHandler(g, monitor, value))
                 .Simplify();
+        }
+
+        /// <summary>
+        /// Replaces all variables not found in a guard with one.
+        /// </summary>
+        /// <param name="gate"></param>
+        /// <param name="monitor"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        private IGate ReplaceNonGuardVariables(IGate gate, Guard monitor)
+        {
+            // get variables referenced in the condition
+            var variables = monitor.PreCondition
+                .SelectAll(e => e is IVariableCondition)
+                .OfType<IVariableCondition>()
+                .Select(u => u.Variable)
+                .Distinct();
+
+            // TraceDependencies("monitor variables: {0}", variables.ToSeparatorList());
+
+            IGate r = gate
+                .Replace(g =>
+                {
+                    if (g is IVariableCondition)
+                    {
+                        var vc = (IVariableCondition)g;
+                        if(!variables.Contains(vc.Variable))
+                        {
+                            g = Gate.Constant(true);
+                        }
+                    }
+
+                    return g;
+                })
+                .Simplify();
+
+            return r;
         }
 
         private IGate ReplaceTransitionVariablesHandler(IGate q, TransitionMonitor monitor, bool value)

@@ -40,12 +40,13 @@
     <Compile Include="Algebra\Product.cs" />
     <Compile Include="Algebra\SumOfProducts.cs" />
     <Compile Include="Algebra\SimpleFactor.cs" />
-    <Compile Include="Bitmap.cs" />
     <Compile Include="Code\CodeGenerator.cs" />
     <Compile Include="Code\CodeLabel.cs" />
+    <Compile Include="Code\CodeLocation.cs" />
     <Compile Include="Code\CodeParameters.cs" />
     <Compile Include="Code\CodeWriter.cs" />
     <Compile Include="Code\CSharpCodeGenerator.cs" />
+    <Compile Include="Code\ICodeLabelEvaluator.cs" />
     <Compile Include="Code\ITriggerConditions.cs" />
     <Compile Include="Code\TriggerConditions.cs" />
     <Compile Include="Code\TriggerTermCollection.cs" />
@@ -80,7 +81,7 @@
     <Compile Include="IGate.cs" />
     <Compile Include="StateMachine.cs" />
     <Compile Include="StateType.cs" />
-    <Compile Include="TraceOptions.cs" />
+    <Compile Include="TraceFlags.cs" />
     <Compile Include="Effects\Effect.cs" />
     <Compile Include="Transitions\Event.cs" />
     <Compile Include="Transitions\Guard.cs" />

@@ -17,7 +17,7 @@ namespace SMG.Common.Code
     /// </summary>
     /// <remarks>
     /// <para>Derive from this class to create specific target language generators.</para></remarks>
-    public abstract class CodeGenerator
+    public abstract class CodeGenerator : ICodeLabelEvaluator
     {
         #region Private
 
@@ -114,9 +114,15 @@ namespace SMG.Common.Code
 
             EmitClassFooter();
             Writer.LeaveBlock(); // class
+
+            EmitFooter();
         }
 
         protected virtual void EmitPreamble()
+        {
+        }
+
+        protected virtual void EmitFooter()
         {
         }
 
@@ -231,7 +237,6 @@ namespace SMG.Common.Code
             gate.Emit(Writer);
             Writer.AppendLine(";");
         }
-
 
         #endregion
 
@@ -361,12 +366,8 @@ namespace SMG.Common.Code
             writer.AppendComment();
             writer.AppendComment("state transition");
 
-            var first = true;
             foreach (var t in triggers)
             {
-                if (first) first = false;
-                else writer.Append("else ");
-
                 var c = _gc.ConvertToGate(0, t.PreCondition);
 
                 EmitIfHeader(c);
@@ -383,8 +384,8 @@ namespace SMG.Common.Code
 
         private void EmitCodeLabels(int stage)
         {
-            _writer.AppendComment();
-            _writer.AppendComment("stage " + stage + " conditions");
+            /*_writer.AppendComment();
+            _writer.AppendComment("stage " + stage + " conditions");*/ 
             _gc.Emit(this, stage);
         }
 
@@ -400,13 +401,13 @@ namespace SMG.Common.Code
             _gc.OnBeforeAddLabel = EvaluateCodeLabelBefore;
 
             _guards = new GuardCollection(_gc);
-            _effectsbefore = new EffectsCollection(0);
-            _effectsafter = new EffectsCollection(1);
+            _effectsbefore = new EffectsCollection();
+            _effectsafter = new EffectsCollection();
         }
 
         private void EndHandler()
         {
-            if(TraceOptions.ShowLabel)
+            if(TraceFlags.ShowLabel)
             {
                 Trace("labels:\n{0}", _gc.ToDebugString());
             }
@@ -428,12 +429,6 @@ namespace SMG.Common.Code
             foreach (var t in e.Triggers)
             {
                 c.Add(t);
-                
-                //c = Gate.ComposeOR(pre, t.PreCondition);
-                //post = Gate.ComposeOR(post, t.PostCondition);
-
-                //var c = _gc.ConvertToGate(0, t.PreCondition);
-                //_gc.Schedule(c);
             }
 
             foreach (var t in e.Triggers)

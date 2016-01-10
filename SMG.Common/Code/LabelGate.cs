@@ -66,7 +66,7 @@ namespace SMG.Common.Code
             }
             else
             {
-                if (TraceOptions.EmitComments)
+                if (TraceFlags.EmitComments)
                 {
                     writer.Append("/* " + Label + " */ ");
                 }

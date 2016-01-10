@@ -1,0 +1,19 @@
+﻿
+SMG Script2
+
+DECLARE BOOLEAN a, b, c
+DECLARE State (u, v, w)
+DECLARE State x
+
+TRIGGER e1 WHEN (a(1 => 0) OR b(0 => 1)) AND x(u)
+	CALL m1
+
+GUARD WHEN LEAVE a
+	CALL m2
+
+GUARD WHEN LEAVE b(0)
+	CALL boo
+
+GUARD WHEN ENTER b
+	CALL m2
+

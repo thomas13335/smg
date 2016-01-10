@@ -61,7 +61,7 @@ namespace SMG.Common.Conditions
 
         public override string ToString()
         {
-            if (TraceOptions.ShowVariableAddress)
+            if (TraceFlags.ShowVariableAddress)
             {
                 return Variable.Name + "<" + Group + "," + Address + ">";
             }

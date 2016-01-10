@@ -1,0 +1,13 @@
+﻿
+smg script1
+
+declare State ( a, b ) s, t, u
+declare Two (off, on) x
+declare boolean f, g
+
+trigger t1 when s(a => b)
+trigger t2 when t(a => b)
+
+trigger t3 when x(off => on)
+
+guard when s(b) and t(b) and f call m1

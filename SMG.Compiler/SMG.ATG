@@ -67,7 +67,10 @@ PRODUCTIONS
 			[ 
 				ActionList<out effects>		(. trigger.AddEffects(effects); .)
 			]
-											(. SM.AddTrigger(trigger); .)
+											(. 
+												SM.CurrentLocation = Location;
+												SM.AddTrigger(trigger); 
+											.)
 		}
 		.
 

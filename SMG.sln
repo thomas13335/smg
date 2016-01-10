@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SMG.Common", "SMG.Common\SM
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SMG.Compiler", "SMG.Compiler\SMG.Compiler.csproj", "{54D9792F-C488-4A43-B9A1-F18A1D6BBE0A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SMG.UnitTest", "SMG.UnitTest\SMG.UnitTest.csproj", "{1056CAF7-3BAD-4B54-AAE7-53CC484E75BF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{54D9792F-C488-4A43-B9A1-F18A1D6BBE0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{54D9792F-C488-4A43-B9A1-F18A1D6BBE0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{54D9792F-C488-4A43-B9A1-F18A1D6BBE0A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1056CAF7-3BAD-4B54-AAE7-53CC484E75BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1056CAF7-3BAD-4B54-AAE7-53CC484E75BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1056CAF7-3BAD-4B54-AAE7-53CC484E75BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1056CAF7-3BAD-4B54-AAE7-53CC484E75BF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

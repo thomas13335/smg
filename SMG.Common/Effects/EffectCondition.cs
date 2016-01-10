@@ -11,13 +11,15 @@ namespace SMG.Common.Effects
     /// <summary>
     /// Condition for an effect for some event.
     /// </summary>
-    class EffectCondition : ITriggerConditions
+    public class EffectCondition : ITriggerConditions
     {
         public Effect Effect { get; private set; }
 
         public IGate PreCondition  {get; private set;}
 
         public IGate PostCondition { get; private set; }
+
+        public IGate ConditionLabel { get; set; }
 
         public IEnumerable<TransitionMonitor> Sources { get; private set; }
 

@@ -11,7 +11,7 @@ namespace SMG.Common.Code
     /// <summary>
     /// Converts one set of gates into another set of gates based on code labels.
     /// </summary>
-    class GateConverter : IDisposable
+    public class GateConverter : IDisposable
     {
         #region Private
 
@@ -221,24 +221,15 @@ namespace SMG.Common.Code
         /// </summary>
         /// <param name="writer">To code writer where to evaluate the labels to.</param>
         /// <param name="stage">Evaluate variables scheduled up to this stage.</param>
-        public void Emit(CodeGenerator cg, int stage)
+        public void Emit(ICodeLabelEvaluator cg, int stage)
         {
-            /*var evaluatedlables = _labels
-                .Values
-                .Where(l => ShouldCodeLabelBeEvaluated(l, stage));
-
-            foreach (var label in evaluatedlables)
-            {
-                label.Evaluate(writer);
-            }*/
-
-            foreach(var label in _queue)
+            var labels = _queue.Where(l => l.Stage <= stage).ToList();
+            foreach(var label in labels)
             {
                 Gate.TraceLabel(label.Gate, label.OriginalGate, "emit");
                 label.Evaluate(cg);
+                _queue.Remove(label);
             }
-
-            _queue.Clear();
         }
 
         /// <summary>

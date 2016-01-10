@@ -7,6 +7,7 @@ using SMG.Common.Conditions;
 using SMG.Common.Transitions;
 using SMG.Common.Types;
 using SMG.Common.Effects;
+using SMG.Common.Code;
 
 
 namespace SMG.Compiler
@@ -32,6 +33,7 @@ public class Parser {
 	// SMG custom elements
 	internal StateMachine SM { get; set; }
 	internal ICondition Result { get; set; }
+	internal CodeLocation Location { get { return new CodeLocation(scanner.Line, scanner.Column); } }
 
 
 
@@ -155,7 +157,9 @@ public class Parser {
 				ActionList(out effects);
 				trigger.AddEffects(effects); 
 			}
+			SM.CurrentLocation = Location;
 			SM.AddTrigger(trigger); 
+			
 		}
 	}
 
