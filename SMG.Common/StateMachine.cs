@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace SMG.Common
 {
     /// <summary>
-    /// The state machine.
+    /// The state machine object.
     /// </summary>
     /// <remarks>
     /// <para>A state machine consists of a set of events, associated triggers and guards.</para>
@@ -319,7 +319,6 @@ namespace SMG.Common
 
             try
             {
-
                 TraceDependencies("add trigger '{0}' ...", trigger.Name);
 
                 // ValidateTrigger(trigger);
@@ -339,6 +338,7 @@ namespace SMG.Common
                     else if (precondition is TrueGate)
                     {
                         Trace("SMG034: warning: trigger '{0}' precondition is always true.", trigger);
+                        tlist.Add(new ProductTrigger(trigger));
                     }
                 }
                 else if (precondition.Type == GateType.OR)
@@ -350,21 +350,17 @@ namespace SMG.Common
                     // analyze conditions
                     // TraceDependencies("{0}", trigger.Transitions.ToDebugString());
 
-                    TraceDependencies("evaluating branches ...");
-
                     // split into multiple triggers
-                    foreach (var g in inputs)
+                    foreach (var product in inputs)
                     {
-                        TraceDependencies("trigger path [{0}] ...", g);
+                        // extract the transition subset for the guard condition
+                        var tset = new TransitionSet(trigger.Transitions, product);
+                        TraceDependencies("  transition set of branch [{0}]: {1}", product, tset.ToDebugString());
 
-                        // replace transitions
-                        var tset = new TransitionSet(g);
-                        TraceDependencies("transition set of {0}:\n{1}", g, tset.ToDebugString());
+                        var pre = ReplaceVariableCondition(tset, product, false);
+                        var post = ReplaceVariableCondition(tset, product, true);
 
-                        var pre = ReplaceVariableCondition(g, false);
-                        var post = ReplaceVariableCondition(g, true);
-
-                        TraceDependencies("branch trigger conditions [{0} => {1}].", pre, post);
+                        TraceDependencies("  branch conditions [{0} => {1}].", pre, post);
 
                         // add branch trigger
                         tlist.Add(new ProductTrigger(trigger, tset, pre, post));
@@ -381,8 +377,8 @@ namespace SMG.Common
                 {
                     TraceDependencies("product trigger {0} ...", t1);
                     TraceDependencies("  conditions [{0}, {1}] ...", t1.PreCondition, t1.PostCondition);
+                    TraceDependencies("  transitions {0}", trigger.Transitions.ToDebugString());
 
-                    // TraceDependencies("transitions:\n{0}", trigger.Transitions.ToDebugString());
                     t1.Qualify();
 
                     // check if any existing trigger is conflicting
@@ -390,7 +386,7 @@ namespace SMG.Common
                     {
                         // the new trigger precondition must not intersect any existing precondition
                         var product = Gate.ComposeAND(existingtrigger.PreCondition, t1.PreCondition);
-                        product = ReplaceTransitionVariables(product, existingtrigger, false);
+                        product = ReplaceTransitionVariables(existingtrigger.Transitions, product, false);
                         if (!product.IsFalse())
                         {
                             throw new CompilerException(ErrorCode.AmbigousPreCondition, "ambigous transition conditions [" +
@@ -438,134 +434,147 @@ namespace SMG.Common
         private void CalculateDependencies()
         {
             TraceDependencies("calculate dependencies ...");
-            foreach (var e in _events.Values)
+            foreach (var trigger in Events.SelectMany(e => e.Triggers))
             {
-                foreach (var t in e.Triggers)
-                {
-                    var ct = t.PreCondition;
-                    var gtpost = t.PostCondition;
-                    var gtpre = ct;
-                    TraceDependencies("trigger '{0}' conditions [{1}, {2}] ...", t.Name, gtpre, gtpost);
+                CalculateTriggerDependencies(trigger);
+            }
+        }
 
-                    if (!t.ModifiedVariables.Any())
+        /// <summary>
+        /// Associates a trigger with corresponding guards.
+        /// </summary>
+        /// <param name="trigger">The trigger to associate.</param>
+        private void CalculateTriggerDependencies(ProductTrigger trigger)
+        {
+            var ct = trigger.PreCondition;
+            var gtpost = trigger.PostCondition;
+            var gtpre = ct;
+            TraceDependencies("trigger '{0}' conditions [{1}, {2}] ...", trigger.Name, gtpre, gtpost);
+
+            if (!trigger.ModifiedVariables.Any())
+            {
+                TraceDependencies("  does not modify state.");
+                return;
+            }
+
+            foreach (var guard in Guards)
+            {
+                var gg = guard.PreCondition;
+                TraceDependencies("  guard '{0}' precondition [{1}] ...", guard.Name, gg);
+
+                var tg = new TriggerGuard(trigger, guard);
+
+                if (guard.Transitions.Any())
+                {
+                    TraceDependencies("    state change guard ...");
+                    if (!guard.ModifiedVariables.Intersect(trigger.ModifiedVariables).Any())
                     {
-                        TraceDependencies("  does not modify state.");
+                        TraceDependencies("    no affected variable.");
                         continue;
                     }
 
-                    foreach (var g in Guards)
+                    var gatepre = Gate.ComposeAND(gtpre, gg);
+                    if (gatepre.Type == GateType.Fixed)
                     {
-                        var gg = g.PreCondition;
-                        TraceDependencies("  guard '{0}' precondition [{1}] ...", g.Name, gg);
+                        TraceDependencies("    precondition does not match.");
+                        continue;
+                    }
 
-                        var tg = new TriggerGuard(t, g);
+                    var gatepost = Gate.ComposeAND(gtpost, guard.PostCondition);
+                    if (gatepost.Type == GateType.Fixed)
+                    {
+                        TraceDependencies("    postcondition does not match.");
+                        continue;
+                    }
 
-                        if (g.Transitions.Any())
+                    TraceDependencies("    combination ({0}, {1}) handler.", gatepre, gatepost);
+
+                    tg.PreCondition = gatepre;
+                    tg.PostCondition = gatepost;
+                }
+                else
+                {
+                    TraceDependencies("    static condition [{0}] ...", gg);
+
+                    Debug.Assert(guard.PreCondition.ID == guard.PostCondition.ID);
+
+                    IGate genter, gleave;
+
+                    if (guard.Type == GuardType.ENTER)
+                    {
+                        // PRE[trigger] AND NOT POST[guard]
+                        // trigger condition met, guard condition not met
+                        genter = Gate.ComposeAND(trigger.PreCondition, Gate.Invert(guard.PreCondition));
+
+                        // PRE[trigger] AND PRE[guard]
+                        // trigger condition met, guard conditon not met
+                        gleave = Gate.ComposeAND(trigger.PostCondition, guard.PostCondition);
+                    }
+                    else
+                    {
+                        genter = Gate.ComposeAND(trigger.PreCondition, guard.PreCondition);
+                        gleave = Gate.ComposeAND(trigger.PostCondition, Gate.Invert(guard.PostCondition));
+                    }
+
+                    var tgenter = genter;
+                    var tgleave = gleave;
+
+                    Gate.TraceDependencies(genter, gleave, "guard product");
+
+                    // set all factors not appearing in the trigger to 1
+                    genter = ReplaceTransitionVariables(trigger.Transitions, genter, true);
+                    gleave = ReplaceTransitionVariables(trigger.Transitions, gleave, true);
+
+                    Gate.TraceDependencies(genter, gleave, "inter product");
+
+                    // set all factors not appearing in the guard to 1
+                    genter = ReplaceNonGuardVariables(genter, guard);
+                    gleave = ReplaceNonGuardVariables(gleave, guard);
+                    /*genter = ReplaceTransitionVariables(guard.Transitions, genter, true);
+                    gleave = ReplaceTransitionVariables(guard.Transitions, gleave, true);*/
+
+                    Gate.TraceDependencies(genter, gleave, "guard match");
+
+                    //if (genter is FalseGate || gleave is FalseGate)
+                    if (genter.Type.IsFixed() || gleave.Type.IsFixed())
+                    {
+                        TraceDependencies("    condition does not match.");
+                        continue;
+                    }
+
+                    /*tg.PreCondition = guard.PreCondition;
+                    tg.PostCondition = guard.PostCondition;*/
+                    tg.PreCondition = tgenter;
+                    tg.PostCondition = tgleave;
+
+                    Gate.TraceDependencies(tgenter, tgleave, "guard conditions");
+
+                    // see if the transition set is non-empty
+                    var transx = trigger.Transitions.Match(genter, gleave).ToArray();
+                    if (transx.Length > 0)
+                    {
+                        if (guard.Type == GuardType.ENTER)
                         {
-                            TraceDependencies("    state change guard ...");
-                            if (!g.ModifiedVariables.Intersect(t.ModifiedVariables).Any())
-                            {
-                                TraceDependencies("    no affected variable.");
-                                continue;
-                            }
-
-                            var gatepre = Gate.ComposeAND(gtpre, gg);
-                            if (gatepre.Type == GateType.Fixed)
-                            {
-                                TraceDependencies("    precondition does not match.");
-                                continue;
-                            }
-
-                            var gatepost = Gate.ComposeAND(gtpost, g.PostCondition);
-                            if (gatepost.Type == GateType.Fixed)
-                            {
-                                TraceDependencies("    postcondition does not match.");
-                                continue;
-                            }
-
-                            TraceDependencies("    combination ({0}, {1}) handler.", gatepre, gatepost);
-
-                            tg.PreCondition = gatepre;
-                            tg.PostCondition = gatepost;
+                            TraceDependencies("    entry handler.");
+                        }
+                        else if (guard.Type == GuardType.LEAVE)
+                        {
+                            TraceDependencies("    exit handler.");
                         }
                         else
                         {
-                            TraceDependencies("    static condition [{0}] ...", gg);
-
-                            /*var gatepre = Gate.ComposeAND(gtpre, gg);
-                            var gatepost = Gate.ComposeAND(gtpost, g.PostCondition);*/
-
-                            Debug.Assert(g.PreCondition.ID == g.PostCondition.ID);
-
-                            IGate genter, gleave;
-
-                            if (g.Type == GuardType.ENTER)
-                            {
-                                // PRE[trigger] AND NOT POST[guard]
-                                // trigger condition met, guard condition not met
-                                genter = Gate.ComposeAND(t.PreCondition, Gate.Invert(g.PreCondition));
-
-                                // PRE[trigger] AND PRE[guard]
-                                // trigger condition met, guard conditon not met
-                                gleave = Gate.ComposeAND(t.PostCondition, g.PostCondition);
-                            }
-                            else
-                            {
-                                genter = Gate.ComposeAND(t.PreCondition, g.PreCondition);
-                                gleave = Gate.ComposeAND(t.PostCondition, Gate.Invert(g.PostCondition));
-                            }
-
-                            Gate.TraceDependencies(genter, gleave, "guard product");
-
-                            // set all factors not appearing in the trigger to 1
-                            genter = ReplaceTransitionVariables(genter, t, true);
-                            gleave = ReplaceTransitionVariables(gleave, t, true);
-
-                            // set all factors not appearing in the guard to 1
-                            genter = ReplaceNonGuardVariables(genter, g);
-                            gleave = ReplaceNonGuardVariables(gleave, g);
-
-                            Gate.TraceDependencies(genter, gleave, "guard match");
-
-                            //if (genter is FalseGate || gleave is FalseGate)
-                            if(genter.Type.IsFixed() || gleave.Type.IsFixed())
-                            {
-                                TraceDependencies("    condition does not match.");
-                                continue;
-                            }
-
-                            tg.PreCondition = g.PreCondition;
-                            tg.PostCondition = g.PostCondition;
-
-                            // see if the transition set covers the resulting transition
-                            var transx = t.Transitions.Match(genter, gleave).ToArray();
-                            if (transx.Length == t.Transitions.Variables.Count())
-                            {
-                                // TODO: this check is unnecessary
-                                if (g.Type == GuardType.ENTER)
-                                {
-                                    TraceDependencies("    entry handler.");
-                                }
-                                else if (g.Type == GuardType.LEAVE)
-                                {
-                                    TraceDependencies("    exit handler.");
-                                }
-                                else
-                                {
-                                    throw new InvalidOperationException("unexpected guard type.");
-                                }
-                            }
-                            else
-                            {
-                                TraceDependencies("    transition does not match.");
-                                continue;
-                            }
+                            throw new InvalidOperationException("unexpected guard type.");
                         }
-
-                        // associate the trigger with the guard and vice versa
-                        t.AddGuard(tg);
+                    }
+                    else
+                    {
+                        TraceDependencies("    transition does not match.");
+                        continue;
                     }
                 }
+
+                // associate the trigger with the guard and vice versa
+                trigger.AddGuard(tg);
             }
         }
 
@@ -622,9 +631,9 @@ namespace SMG.Common
         /// <param name="e">The gate to replace.</param>
         /// <param name="post">True if the post condition shall be evaluated, false otherwise.</param>
         /// <returns>The resulting gate.</returns>
-        private IGate ReplaceVariableCondition(IGate e, bool post)
+        private IGate ReplaceVariableCondition(TransitionSet tset, IGate e, bool post)
         {
-            return e.Replace(g => ReplaceVariableConditionHandler(g, post));
+            return e.Replace(g => ReplaceVariableConditionHandler(tset, g, post));
         }
 
         /// <summary>
@@ -633,33 +642,39 @@ namespace SMG.Common
         /// <param name="e"></param>
         /// <param name="post"></param>
         /// <returns></returns>
-        private IGate ReplaceVariableConditionHandler(IGate e, bool post)
+        private IGate ReplaceVariableConditionHandler(TransitionSet tset, IGate e, bool post)
         {
             IGate result = e;
 
             if (e is IVariableCondition)
             {
                 var c = (IVariableCondition)e;
-                var tlist = c.GetTransitions();
-
-                // unique transition required
+                var tlist = tset.GetTransitions(c.Variable);
                 var count = tlist.Count();
-                if (1 != tlist.Count())
+
+                if(0 == count)
                 {
-                    throw new CompilerException(ErrorCode.AmbigousPreCondition, 
+                    // no transitions for this variable, keep
+                }
+                else if (count > 1)
+                {
+                    throw new CompilerException(ErrorCode.AmbigousPreCondition,
                         "multiple transitions for variable '" + c.Variable + "'.");
                 }
-
-                // unique post state required
-                var t = tlist.First();
-                var stateindexes = post ? t.NewStateIndexes : t.PreStateIndexes;
-                if (stateindexes.Length != 1)
+                else
                 {
-                    throw new CompilerException(ErrorCode.AmbigousPreCondition, 
-                        "ambigous variable condition.");
-                }
+                    // unique post state required
+                    var t = tlist.First();
+                    var stateindexes = post ? t.NewStateIndexes : t.PreStateIndexes;
+                    if (stateindexes.Length != 1)
+                    {
+                        throw new CompilerException(ErrorCode.AmbigousPreCondition,
+                            "ambigous variable condition.");
+                    }
 
-                result = c.CreateElementaryCondition(stateindexes.First());
+                    // replace with elementary
+                    result = c.CreateElementaryCondition(stateindexes.First());
+                }
             }
 
             // Gate.TraceDecompose(e, result, "var repl {0}", post);
@@ -667,10 +682,17 @@ namespace SMG.Common
             return result;
         }
 
-        private IGate ReplaceTransitionVariables(IGate gate, TransitionMonitor monitor, bool value)
+        /// <summary>
+        /// Replaces variable conditions refering to a transition set with constants.
+        /// </summary>
+        /// <param name="tset">The transition set.</param>
+        /// <param name="gate">The gate to translate.</param>
+        /// <param name="value"></param>
+        /// <returns>The resulting modified gate.</returns>
+        private IGate ReplaceTransitionVariables(TransitionSet tset, IGate gate, bool value)
         {
             return gate
-                .Replace(g => ReplaceTransitionVariablesHandler(g, monitor, value))
+                .Replace(g => ReplaceTransitionVariablesHandler(tset, g, value))
                 .Simplify();
         }
 
@@ -690,6 +712,8 @@ namespace SMG.Common
                 .Select(u => u.Variable)
                 .Distinct();
 
+            var vset = new HashSet<Variable>(variables);
+
             // TraceDependencies("monitor variables: {0}", variables.ToSeparatorList());
 
             IGate r = gate
@@ -698,7 +722,7 @@ namespace SMG.Common
                     if (g is IVariableCondition)
                     {
                         var vc = (IVariableCondition)g;
-                        if(!variables.Contains(vc.Variable))
+                        if (!vset.Contains(vc.Variable))
                         {
                             g = Gate.Constant(true);
                         }
@@ -711,20 +735,16 @@ namespace SMG.Common
             return r;
         }
 
-        private IGate ReplaceTransitionVariablesHandler(IGate q, TransitionMonitor monitor, bool value)
+        private IGate ReplaceTransitionVariablesHandler(TransitionSet tset, IGate q, bool value)
         {
             var result = q;
 
             if (result is IVariableCondition)
             {
                 var vc = ((IVariableCondition)result);
-                if (!monitor.Transitions.Contains(vc.Variable))
+                if (!tset.Contains(vc.Variable))
                 {
                     result = Gate.Constant(value);
-                }
-                else
-                {
-                    // result = Gate.Constant(true);
                 }
             }
 

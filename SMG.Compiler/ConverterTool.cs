@@ -2,6 +2,7 @@
 using SMG.Common.Exceptions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -14,6 +15,8 @@ namespace SMG.Compiler
     /// </summary>
     public class ConverterTool : StateMachineCompiler
     {
+        public bool CheckTimestamps { get; set; }
+
         #region Public Methods
 
         public static int Main(string[] args)
@@ -34,10 +37,17 @@ namespace SMG.Compiler
             {
                 foreach (var arg in args)
                 {
-                    rc = ProcessFile(arg);
-                    if (0 != rc)
+                    if (arg == "-t")
                     {
-                        return rc;
+                        CheckTimestamps = true;
+                    }
+                    else
+                    {
+                        rc = ProcessFile(arg);
+                        if (0 != rc)
+                        {
+                            return rc;
+                        }
                     }
                 }
             }
@@ -63,6 +73,23 @@ namespace SMG.Compiler
                 var fullpath = Path.GetFullPath(filename);
                 var outputfile = fullpath + ".cs";
 
+                if(File.Exists(outputfile) && CheckTimestamps)
+                {
+                    var texisting = File.GetLastWriteTime(outputfile);
+                    var tsource = File.GetLastWriteTime(fullpath);
+
+                    if(tsource <= texisting)
+                    {
+                        Print("smg source '{0}' skipped.", fullpath);
+                        return 0;
+                    }
+                }
+
+                Print("smg: processing '{0}' ...", fullpath);
+
+                var clock = new Stopwatch();
+                clock.Start();
+
                 SM.SourceFile = fullpath;
 
                 using (var stream = File.OpenRead(fullpath))
@@ -77,18 +104,19 @@ namespace SMG.Compiler
                     writer.Write(Output);
                 }
 
-                Print("generated file '{0}'.", outputfile);
+                Print("smg: output '{0}' ({1:0.000}s).", outputfile, clock.Elapsed.TotalSeconds);
             }
             catch (AggregateException ex)
             {
                 foreach (var subex in ex.InnerExceptions.OfType<CompilerException>())
                 {
+                    // allow to click on it in DEVENV
                     Print("{0}: error {1}", subex.Location, subex.Message);
                 }
             }
             catch (Exception ex)
             {
-                Print("error: {0}", ex.Message);
+                Print("smg: error: {0}", ex.Message);
             }
 
             return result;

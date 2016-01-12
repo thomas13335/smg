@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SMG.Common.Code;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SMG.Common.Transitions
 {
-    public class ProductTrigger : Trigger
+    public class ProductTrigger : Trigger, IElementaryTriggerCondition
     {
         /// <summary>
         /// Creates a trigger based on another trigger, with new conditions.

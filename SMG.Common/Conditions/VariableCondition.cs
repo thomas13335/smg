@@ -53,10 +53,10 @@ namespace SMG.Common.Conditions
                 var key = Variable.Name;
 
                 // add parent key if this refers to a state transition condition.
-                if(null != _transparent)
+                /*if(null != _transparent)
                 {
                     key += "$" + _transparent.Key;
-                }
+                }*/
 
                 return key;
             }
@@ -174,15 +174,19 @@ namespace SMG.Common.Conditions
         {
             if (null != Parent)
             {
-                foreach (var t in Parent.GetTransitions())
+                /*foreach (var t in Parent.GetTransitions())
                 {
                     if (t.PreStateIndexes.Contains(StateIndex))
                     {
                         t.PreStateIndexes = new[] { StateIndex };
                         yield return t;
                     }
-                }
+                }*/
+
+                throw new NotImplementedException();
             }
+
+            yield break;
         }
 
         #endregion

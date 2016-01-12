@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 
 namespace SMG.Common.Conditions
 {
+    /// <summary>
+    /// A condition composing multiple other conditions.
+    /// </summary>
     public abstract class CompositeCondition : Condition
     {
         public abstract IGate InitialGate { get; }

@@ -24,10 +24,13 @@ namespace SMG.Common
     }
 
     /// <summary>
-    /// Semantix object for state conditions and compositions thereof.
+    /// Interface provided by semantic object for state conditions and compositions thereof.
     /// </summary>
     public interface ICondition
     {
+        /// <summary>
+        /// Unique key for the object, used for duplicate eliminiation.
+        /// </summary>
         string Key { get; }
 
         /// <summary>
@@ -44,8 +47,8 @@ namespace SMG.Common
         /// <summary>
         /// Decomposes the condition into a logical gate.
         /// </summary>
-        /// <param name="mode"></param>
-        /// <returns></returns>
+        /// <param name="mode">Kind of decomposition requested.</param>
+        /// <returns>The logical gate representing the decomposition.</returns>
         IGate Decompose(ConditionMode mode);
 
         /// <summary>
@@ -63,7 +66,7 @@ namespace SMG.Common
     /// <summary>
     /// A condition based on the value of a state machine variable.
     /// </summary>
-    public interface IVariableCondition : ICondition
+    public interface IVariableCondition
     {
         /// <summary>
         /// The affected variable.

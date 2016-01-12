@@ -1,6 +1,6 @@
 ﻿smg StandardConditions
 
-declare State (a, b) s, t
+declare State (a, b, c) s, t
 declare boolean f
 
 trigger e1 when s(a => b) or t(a => b)

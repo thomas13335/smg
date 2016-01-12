@@ -87,7 +87,8 @@ namespace SMG.Common.Code
 
             if (first)
             {
-                foreach (var e in _originalgate.SelectAll())
+                if(!TraceFlags.DisableNestedCodeLabelScheduling)
+                foreach (var e in _originalgate.SelectAll(e => e is LabelGate))
                 {
                     if (e is LabelGate)
                     {

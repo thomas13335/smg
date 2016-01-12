@@ -54,7 +54,7 @@ namespace SMG.Common.Effects
         /// </summary>
         /// <param name="effect">The effect</param>
         /// <param name="condition">The condition term for the effect.</param>
-        public void AddEffect(Effect effect, ITriggerConditions condition, TransitionMonitor source)
+        public void AddEffect(Effect effect, ICompositeTriggerCondition condition, TransitionMonitor source)
         {
             Entry entry;
             if(!_map.TryGetValue(effect.UniqueID, out entry))
@@ -75,7 +75,6 @@ namespace SMG.Common.Effects
             }
 
             var c = new TriggerConditions(trigger);
-            c.JoinTrigger(trigger);
 
             entry.Add(c);
             entry.AddSource(trigger);
@@ -89,30 +88,40 @@ namespace SMG.Common.Effects
         {
             foreach (var entry in _map.Values)
             {
-                // convert precondition at stage 1
-                var pre = gc.ConvertToGate(0, entry.PreCondition);
+                if(entry.PreCondition.IsFalse())
+                {
+                    // never reached
+                    continue;
+                }
 
-                entry.ConditionLabel = pre;
+                var result = Gate.Constant(false);
 
-                /*var fac = Gate.ExtractCommonFactors(pre);
-                Gate.TraceLabel(pre, fac, "ezu?");*/
+                //entry.ConditionLabel = pre;
+                foreach(var element in entry.Elements)
+                {
+                    var pre = gc.ConvertToGate(0, element.PreCondition);
+                    var post = gc.ConvertToGate(1, element.PostCondition);
 
-                var post = gc.ConvertToGate(1, entry.PostCondition);
+                    // in code label space now
+                    var product = Gate.ComposeAND(pre, post);
+                    result = Gate.ComposeOR(result, product);
+                }
 
-                Gate.TraceLabel(pre, post, "Schedule Effect");
+                gc.Schedule(result);
 
-                // TODO: may not need post condition
-                gc.Schedule(pre);
-                gc.Schedule(post);
+                // assigning a code label makes this entry part of the game
+                entry.ConditionLabel = gc.ConvertToGate(1, result);
             }
         }
 
         public IEnumerable<EffectCondition> GetEffectConditions()
         {
-            return _map.Values.Select(e => CreateEffectCondition(e));
+            return _map.Values
+                .Where(e => null != e.ConditionLabel)
+                .Select(e => CreateEffectCondition(e));
         }
 
-        public ITriggerConditions GetEffectCondition(Effect effect)
+        public ICompositeTriggerCondition GetEffectCondition(Effect effect)
         {
             Entry entry;
             if(_map.TryGetValue(effect.UniqueID, out entry))
@@ -121,7 +130,7 @@ namespace SMG.Common.Effects
             }
             else
             {
-                return new TriggerConditions();
+                return new TriggerTermCollection<int>(0);
             }
         }
 

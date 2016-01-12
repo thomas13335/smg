@@ -19,7 +19,6 @@ namespace SMG.Common.Conditions
             get { return GateType.AND; }
         }
 
-
         public IntersectCondition()
         { }
 

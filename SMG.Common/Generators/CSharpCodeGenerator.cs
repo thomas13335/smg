@@ -69,6 +69,17 @@ namespace SMG.Common.Generators
             Writer.AppendLine();
         }
 
+        protected override void EmitConstructor()
+        {
+            Writer.AppendLine("public " + SM.Name + "()");
+            EmitEnterBlock();
+            foreach(var v in SM.Variables)
+            {
+                EmitVariableAssignment(v, 0);
+            }
+            EmitLeaveBlock();
+        }
+
         protected override void EmitVariableDeclaration(Variable v)
         {
             Writer.AppendLine("private " + GetTypeID(v.Type) + " " + GetVariableCodeName(v) + ";");
@@ -93,10 +104,19 @@ namespace SMG.Common.Generators
             Writer.AppendLine(";");
         }
 
+        public override void EmitCodeLabelAssignment(string label, IGate gate)
+        {
+            Writer.Append("var " + label + " = ");
+            gate.Emit(this);
+            Writer.AppendLine(";");
+        }
+
+
         protected override void EmitProcessEventMethodHeader()
         {
             var access = Parameters.IsProcessEventPublic ? "public" : "protected";
-            Writer.AppendLine(access + " virtual void ProcessEvent(" + Parameters.EventTypeName + " e)");
+            var virt = null == Parameters.BaseClassName ? "virtual" : "override";
+            Writer.AppendLine(access + " " + virt + " void ProcessEvent(" + Parameters.EventTypeName + " e)");
         }
 
         protected override void EmitHandlerHeader(string name)
@@ -205,7 +225,13 @@ namespace SMG.Common.Generators
         {
             Writer.AppendLine(Parameters.DefaultProtection + " enum " + typename);
             Writer.EnterBlock();
-            Writer.Append(values.ToSeparatorList());
+            var last = values.Last();
+            foreach (var v in values)
+            {
+                Writer.Append(v.ToString());
+                if (v != last) Writer.Append(",");
+                Writer.AppendLine();
+            }
             Writer.AppendLine();
             Writer.LeaveBlock();
             Writer.AppendLine();
@@ -215,7 +241,7 @@ namespace SMG.Common.Generators
         {
             Writer.AppendLine("public string ToStateString()");
             Writer.EnterBlock();
-            Writer.AppendLine("var Writer = new StringBuilder();");
+            Writer.AppendLine("var result = \"\";");
             var first = true;
             foreach (var v in SM.Variables)
             {
@@ -225,23 +251,23 @@ namespace SMG.Common.Generators
                 }
                 else
                 {
-                    Writer.AppendLine("Writer.Append(\" \");");
+                    Writer.AppendLine("result += \" \";");
                 }
 
-                Writer.AppendLine("Writer.Append(\"" + v.Name + "\" + \"(\");");
+                Writer.AppendLine("result += \"" + v.Name + "(\";");
                 if (v.Type.IsBoolean)
                 {
-                    Writer.AppendLine("Writer.Append(" + GetVariableCodeName(v) + " ? \"1\" : \"0\");");
+                    Writer.AppendLine("result += " + GetVariableCodeName(v) + " ? \"1\" : \"0\";");
                 }
                 else
                 {
-                    Writer.AppendLine("Writer.Append(" + GetVariableCodeName(v) + ".ToString());");
+                    Writer.AppendLine("result += " + GetVariableCodeName(v) + ";");
                 }
 
-                Writer.AppendLine("Writer.Append(\")\");");
+                Writer.AppendLine("result += \")\";");
             }
 
-            Writer.AppendLine("return Writer.ToString();");
+            Writer.AppendLine("return result;");
             Writer.LeaveBlock();
             Writer.AppendLine();
         }

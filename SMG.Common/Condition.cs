@@ -73,7 +73,7 @@ namespace SMG.Common
         #region Public Methods
 
         /// <summary>
-        /// Returns the state transitions inscribed into this condition.
+        /// Returns the variable state transitions contained in this condition.
         /// </summary>
         /// <returns></returns>
         public virtual IEnumerable<Transition> GetTransitions()

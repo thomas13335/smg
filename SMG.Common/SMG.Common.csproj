@@ -16,7 +16,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\bin\Debug\</OutputPath>
+    <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -26,13 +26,19 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\bin\Release\</OutputPath>
+    <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Algebra\BooleanFactor.cs" />
@@ -45,9 +51,11 @@
     <Compile Include="Code\CodeLocation.cs" />
     <Compile Include="Code\CodeParameters.cs" />
     <Compile Include="Code\CodeWriter.cs" />
+    <Compile Include="Conditions\AnyCondition.cs" />
+    <Compile Include="Conditions\TransitionCondition.cs" />
     <Compile Include="Generators\CSharpCodeGenerator.cs" />
     <Compile Include="Code\ICodeLabelEvaluator.cs" />
-    <Compile Include="Code\ITriggerConditions.cs" />
+    <Compile Include="Code\IElementaryTriggerCondition.cs" />
     <Compile Include="Code\TriggerConditions.cs" />
     <Compile Include="Code\TriggerTermCollection.cs" />
     <Compile Include="Effects\EffectCondition.cs" />
@@ -55,11 +63,12 @@
     <Compile Include="Effects\EffectsCollection.cs" />
     <Compile Include="Code\GateCache.cs" />
     <Compile Include="Code\GateConverter.cs" />
-    <Compile Include="Code\GuardCollection.cs" />
+    <Compile Include="Generators\PseudoCodeGenerator.cs" />
+    <Compile Include="Log.cs" />
+    <Compile Include="Transitions\GuardCollection.cs" />
     <Compile Include="Code\LabelGate.cs" />
     <Compile Include="Condition.cs" />
     <Compile Include="Conditions\ConditionOperations.cs" />
-    <Compile Include="Conditions\AnyCondition.cs" />
     <Compile Include="Conditions\BooleanCondition.cs" />
     <Compile Include="Conditions\CompositeCondition.cs" />
     <Compile Include="Conditions\ElementaryCondition.cs" />
@@ -103,6 +112,7 @@
     <Compile Include="Transitions\TransitionSet.cs" />
     <Compile Include="Transitions\Trigger.cs" />
     <Compile Include="Transitions\TriggerGuard.cs" />
+    <Compile Include="Transitions\VariableTransitions.cs" />
     <Compile Include="Types\BooleanStateType.cs" />
     <Compile Include="Types\SimpleStateType.cs" />
     <Compile Include="Variable.cs" />

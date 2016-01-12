@@ -62,7 +62,7 @@ DECLARE BusyState (
 	WHEN u(revalidate => ready) 
 	WHEN u(resolved => ready) 
 	WHEN u(activating => ready)
-	WHEN u(password => ready)*/ 
+	WHEN u(password => ready)
 
 TRIGGER IdStatePasswordOK
 	WHEN u(getchallenge => password)
@@ -70,3 +70,15 @@ TRIGGER IdStatePasswordOK
 
 TRIGGER IdStatePasswordWrong
 	WHEN u(password => unspecified) AND busy(* => error)
+
+GUARD ggz WHEN ENTER busy(error)
+	CALL m */
+
+
+
+
+GUARD WHEN ENTER g(accept) AND grant(confirm)
+	CALL ShowAccept
+
+TRIGGER UserServiceNotGranted
+	WHEN grant(unknown => confirm) OR g(open => accept)

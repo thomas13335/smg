@@ -1,0 +1,13 @@
+﻿smg SumGuard
+
+declare State (a, b, c) s, t
+declare boolean f
+
+trigger e1 when s(a => b) or t(a => b)
+	call ge1
+
+/*trigger e2 when s(a => b) and t(a => b)
+	call ge2*/ 
+
+guard when s(b) and t(b)
+	call gprod

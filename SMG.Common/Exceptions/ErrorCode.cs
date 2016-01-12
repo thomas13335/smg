@@ -12,6 +12,8 @@ namespace SMG.Common.Exceptions
         UndefinedVariable,
         VariableRedefinition,
         InvalidStateName,
-        UndefinedType
+        UndefinedType,
+        BadCondition,
+        Unsupported
     }
 }

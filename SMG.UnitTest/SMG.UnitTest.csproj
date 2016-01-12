@@ -88,6 +88,18 @@
   <ItemGroup>
     <EmbeddedResource Include="Scripts\script3.smg" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\ConditionTransitions.smg" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\TransitionCondition.smg" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\SumGuard.smg" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\SyntaxCases.smg" />
+  </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
       <ItemGroup>

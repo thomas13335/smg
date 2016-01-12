@@ -20,6 +20,9 @@ namespace SMG.Common
         /// </summary>
         string ID { get; }
 
+        /// <summary>
+        /// A key representing the normalized value of this gate.
+        /// </summary>
         string CacheKey { get; }
 
         /// <summary>
@@ -90,18 +93,49 @@ namespace SMG.Common
         IGate Decompose();
     }
 
+    /// <summary>
+    /// Implemented by gates that represent variable inputs.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every input is assigned a group and address attribute. The group value represents 
+    /// the variable, while the address value represents the stateindex of the input.
+    /// </para>
+    /// <para>
+    /// The (group, address) serves the logical operations on multistate simple variable.</para>
+    /// </remarks>
     public interface IInput : IGate
     {
+        /// <summary>
+        /// The group number of the variable.
+        /// </summary>
         int Group { get; }
 
+        /// <summary>
+        /// The address of the variable within the group.
+        /// </summary>
         int Address { get; }
 
+        /// <summary>
+        /// Number of states in the group.
+        /// </summary>
         int Cardinality { get; }
 
+        /// <summary>
+        /// True if this input inverts the given wire.
+        /// </summary>
         bool IsInverted { get; }
 
+        /// <summary>
+        /// Creates a factor object representing this input.
+        /// </summary>
+        /// <returns>The factor.</returns>
         Factor CreateFactor();
 
+        /// <summary>
+        /// Returns a gate representing the inverted condition.
+        /// </summary>
+        /// <returns></returns>
         IGate Invert();
     }
 }

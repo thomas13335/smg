@@ -142,6 +142,10 @@ namespace SMG.Compiler
                         _cg = new JScriptCodeGenerator(_writer);
                         break;
 
+                    case "pseudo":
+                        _cg = new PseudoCodeGenerator(_writer);
+                        break;
+
                     default:
                         throw new Exception("target language " + Parameters.Language + " is not supported.");
                 }

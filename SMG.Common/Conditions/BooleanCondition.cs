@@ -9,6 +9,9 @@ using System.Threading.Tasks;
 
 namespace SMG.Common.Conditions
 {
+    /// <summary>
+    /// A condition on a boolean variable.
+    /// </summary>
     public class BooleanCondition : VariableCondition
     {
         #region Properties
@@ -77,6 +80,22 @@ namespace SMG.Common.Conditions
 
         #region Overrides
 
+        public override IGate CreateElementaryCondition(int stateindex)
+        {
+            if (stateindex == StateIndex)
+            {
+                return this;
+            }
+            else if (null != Parent)
+            {
+                return new BooleanCondition(Parent, stateindex);
+            }
+            else
+            {
+                return new BooleanCondition(Variable, stateindex);
+            }
+        }
+
         public override Factor CreateFactor()
         {
             return new BooleanFactor(this);
@@ -95,18 +114,6 @@ namespace SMG.Common.Conditions
             }
 
             writer.EmitVariable(Variable);
-        }
-
-        public override IGate CreateElementaryCondition(int stateindex)
-        {
-            if (stateindex == StateIndex)
-            {
-                return this;
-            }
-            else
-            {
-                return new BooleanCondition(Parent, stateindex);
-            }
         }
 
         #endregion

@@ -10,9 +10,9 @@ using System.Threading.Tasks;
 
 namespace SMG.Common
 {
-    static class GateOperations
+    public static class GateOperations
     {
-        public static IGate Simplify(this IGate gate)
+        internal static IGate Simplify(this IGate gate)
         {
             return Gate.Simplify(gate);
         }
@@ -27,7 +27,7 @@ namespace SMG.Common
             return gate is FalseGate;
         }
 
-        public static IGate Replace(this IGate gate, Func<IGate, IGate> replacer)
+        internal static IGate Replace(this IGate gate, Func<IGate, IGate> replacer)
         {
             IGate result;
 
@@ -94,7 +94,7 @@ namespace SMG.Common
             }
         }
 
-        public static void AddInput(this IGate gate, IGate a)
+        internal static void AddInput(this IGate gate, IGate a)
         {
             if (gate is IModifyGate)
             {
@@ -107,7 +107,7 @@ namespace SMG.Common
 
         }
 
-        public static SumOfProducts GetSOP(this IGate garg)
+        internal static SumOfProducts GetSOP(this IGate garg)
         {
             var gset = new SumOfProducts();
 
@@ -173,6 +173,22 @@ namespace SMG.Common
             {
                 return 0;
             }
+        }
+
+        public static IEnumerable<IVariableCondition> GetVariableConditions(this IGate gate)
+        {
+            return gate
+                .SelectAll(g => g is IVariableCondition)
+                .OfType<IVariableCondition>();
+        }
+
+        public static IEnumerable<Variable> GetVariables(this IGate gate)
+        {
+            return gate
+                .GetVariableConditions()
+                .Select(e => e.Variable)
+                .OrderBy(v => v.Index)
+                .Distinct();
         }
     }
 }

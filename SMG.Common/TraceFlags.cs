@@ -21,5 +21,11 @@ namespace SMG.Common
         public static bool ShowVariableAddress = false;
         public static bool EmitComments = true;
         public static bool Verbose = false;
+
+        public static bool DisableTriggerJoin = false;
+
+        public static bool DisableNestedCodeLabelScheduling = false;
+
+        public static bool ShowGuard = false;
     }
 }

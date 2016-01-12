@@ -65,14 +65,14 @@ namespace SMG.Common
 
         protected static void Trace(string format, params object[] args)
         {
-            Debug.WriteLine("   " + format, args);
+            Log.Trace(format, args);
         }
 
         public static void TraceLabel(IGate a, IGate r, string format, params object[] args)
         {
             if (TraceFlags.ShowLabel)
             {
-                TraceGateOp2(a, r, format, args);
+                Log.TraceGateOp2(a, r, format, args);
             }
         }
 
@@ -80,7 +80,7 @@ namespace SMG.Common
         {
             if (TraceFlags.ShowDepencencyAnalysis)
             {
-                TraceGateOp2(a, r, format, args);
+                Log.TraceGateOp2(a, r, format, args);
             }
         }
 
@@ -88,7 +88,7 @@ namespace SMG.Common
         {
             if (TraceFlags.ShowCompose)
             {
-                TraceGateOp2(a, r, format, args);
+                Log.TraceGateOp2(a, r, format, args);
             }
         }
 
@@ -96,7 +96,7 @@ namespace SMG.Common
         {
             if (TraceFlags.ShowCompose)
             {
-                TraceGateOp3(a, b, r, format, args);
+                Log.TraceGateOp3(a, b, r, format, args);
             }
         }
 
@@ -104,7 +104,7 @@ namespace SMG.Common
         {
             if (TraceFlags.ShowDecompose)
             {
-                TraceGateOp2(a, r, format, args);
+                Log.TraceGateOp2(a, r, format, args);
             }
         }
 
@@ -112,7 +112,7 @@ namespace SMG.Common
         {
             if (TraceFlags.ShowSimplify)
             {
-                TraceGateOp2(a, r, format, args);
+                Log.TraceGateOp2(a, r, format, args);
             }
         }
 
@@ -122,20 +122,6 @@ namespace SMG.Common
             {
                 // Debug.WriteLine(format, args);
             }
-        }
-
-        protected static void TraceGateOp2(object a, IGate r, string format, params object[] args)
-        {
-            var text = string.Format(format, args);
-            var line = a.ToString().PadRight(46) + " " + text.PadRight(20) + " ==> " + r.ToString();
-            Debug.WriteLine("   " + line);
-        }
-
-        protected static void TraceGateOp3(IGate a, IGate b, IGate r, string format, params object[] args)
-        {
-            var text = string.Format(format, args);
-            var line = a.ToString().PadRight(21) + " || " + b.ToString().PadRight(21) + " " + text.PadRight(20) + " ==> " + r.ToString();
-            Debug.WriteLine("   " + line);
         }
 
         protected static void TraceOptimize(string format, params object[] args)
@@ -618,7 +604,7 @@ namespace SMG.Common
 
             if (gate != original && TraceFlags.ShowOptimize)
             {
-                TraceGateOp2(original, gate, "optimize AND");
+                Log.TraceGateOp2(original, gate, "optimize AND");
             }
 
             return gate;

@@ -68,5 +68,17 @@ namespace SMG.Common.Transitions
 
         #endregion
 
+        public bool IsSubsetOf(Transition t)
+        {
+            if(!PreStateIndexes.Any(s => !t.PreStateIndexes.Contains(s)))
+            {
+                if (!NewStateIndexes.Any(s => !t.NewStateIndexes.Contains(s)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }

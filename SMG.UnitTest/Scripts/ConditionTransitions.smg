@@ -1,0 +1,27 @@
+﻿smg CodeGeneration
+
+declare State (a, b, c, d) s, t
+
+trigger e1
+	when s(a, b => c) and t(a => b)
+
+trigger e2
+	when s(a, c => b)
+
+guard
+	when s(a => b)
+		call m
+
+guard
+	when s(a => c)
+		call m
+
+guard when enter s(b, c)
+	call q		
+
+guard when leave s(a)
+	call le1
+
+guard when leave s(b)
+	call le2
+

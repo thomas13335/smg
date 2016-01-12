@@ -11,24 +11,20 @@ namespace SMG.Common.Effects
     /// <summary>
     /// Condition for an effect for some event.
     /// </summary>
-    public class EffectCondition : ITriggerConditions
+    public class EffectCondition : TriggerTermCollection<int>, ICompositeTriggerCondition
     {
         public Effect Effect { get; private set; }
 
-        public IGate PreCondition  {get; private set;}
-
-        public IGate PostCondition { get; private set; }
-
         public IGate ConditionLabel { get; set; }
 
-        public IEnumerable<TransitionMonitor> Sources { get; private set; }
-
-        public EffectCondition(Effect effect, ITriggerConditions condition, IEnumerable<TransitionMonitor> sources)
+        public EffectCondition(Effect effect, ICompositeTriggerCondition condition, IEnumerable<TransitionMonitor> sources)
+            : base(0)
         {
             Effect = effect;
-            PreCondition = condition.PreCondition;
-            PostCondition = condition.PostCondition;
-            Sources = sources;
+            AddSources(sources);
+
+            Add(condition);
         }
+
     }
 }

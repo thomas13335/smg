@@ -1,4 +1,5 @@
-﻿using SMG.Common.Effects;
+﻿using SMG.Common.Code;
+using SMG.Common.Effects;
 using SMG.Common.Gates;
 using SMG.Common.Transitions;
 using System;
@@ -8,10 +9,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SMG.Common.Code
+namespace SMG.Common.Transitions
 {
     /// <summary>
-    /// Collects guard objects for trigger of a single event during code generation.
+    /// Collects guard objects for a product trigger of a single event.
     /// </summary>
     class GuardCollection
     {
@@ -23,14 +24,16 @@ namespace SMG.Common.Code
         }
 
         private Dictionary<string, Entry> _map = new Dictionary<string, Entry>();
-        private GateConverter _gc;
 
         #endregion
 
-        public GuardCollection(GateConverter gc)
+        #region Construction
+
+        public GuardCollection()
         {
-            _gc = gc;
         }
+
+        #endregion
 
         #region Diagnostics
 
@@ -42,53 +45,52 @@ namespace SMG.Common.Code
         #endregion
 
         #region Public Methods
-        
+
         /// <summary>
         /// Add a guard to this collection.
         /// </summary>
-        /// <param name="tg"></param>
-        public void AddGuard(ITriggerConditions c0, TriggerGuard tg)
+        /// <param name="tg">The trigger guard to add.</param>
+        public void AddGuard(IElementaryTriggerCondition c0, TriggerGuard tg)
         {
             var name = tg.Guard.Name;
             Entry entry;
-            if(!_map.TryGetValue(name, out entry))
+            if (!_map.TryGetValue(name, out entry))
             {
                 _map[name] = entry = new Entry(tg.Guard);
             }
 
+            // calculate effective conditions for the guard
             var c = new TriggerConditions(c0);
-
-            // combine with condition for this path
-            //var c = _gc.ConvertToGate(0, precondition);
-            //var c = Gate.Constant(true);
-
-            // evaluate guard conditions
-            // c = tg.EvaluateAndCompose(_gc, c);
 
             switch (tg.Guard.Type)
             {
                 case GuardType.LEAVE:
                     c.PreCondition = Gate.ComposeAND(c.PreCondition, tg.PreCondition);
                     c.PostCondition = Gate.ComposeAND(c.PostCondition, tg.PostCondition);
-                    c.JoinTrigger(tg.Trigger);
                     break;
 
                 case GuardType.TRANSITION:
-                    c.PreCondition= Gate.ComposeAND(c.PreCondition, tg.PreCondition);
-                    c.PostCondition= Gate.ComposeAND(c.PostCondition, tg.PostCondition);
+                    c.PreCondition = Gate.ComposeAND(c.PreCondition, tg.PreCondition);
+                    c.PostCondition = Gate.ComposeAND(c.PostCondition, tg.PostCondition);
                     break;
 
                 case GuardType.ENTER:
-                    c.PostCondition= Gate.ComposeAND(c.PostCondition, tg.PostCondition);
-                    c.JoinTrigger(tg.Trigger);
+                    c.PostCondition = Gate.ComposeAND(c.PostCondition, tg.PostCondition);
                     break;
 
                 default:
                     throw new ArgumentException("invalid guard type.");
             }
 
+            Log.TraceGuard(c.PreCondition, c.PostCondition, "before join");
 
-            Gate.TraceLabel(c.PreCondition, c.PostCondition, "add guard");
+            if (!TraceFlags.DisableTriggerJoin)
+            {
+                // express postconditions by preconditions
+                c.JoinTrigger(tg.Trigger);
+            }
+
+            Log.TraceGuard(c.PreCondition, c.PostCondition, "add guard");
 
             // and add to entry
             entry.Add(c);

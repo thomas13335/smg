@@ -21,7 +21,6 @@ namespace SMG.UnitTest
             {
                 try
                 {
-                    //return RunOne();
                     return RunAll();
                 }
                 catch(AggregateException ex)
@@ -35,7 +34,7 @@ namespace SMG.UnitTest
         private static int RunOne()
         {
             var test = new UnitTest1();
-            test.SMG_05_02_CodeGeneration();
+            test.SMG_05_04_SyntaxCases();
             return 0;
         }
 

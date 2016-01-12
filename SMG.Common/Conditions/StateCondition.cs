@@ -126,6 +126,11 @@ namespace SMG.Common.Conditions
             PostWildcard = names.Wildcard;
         }
 
+        public void SetPostStates(IEnumerable<int> indexes)
+        {
+            PostStateIndexes.AddRange(indexes);
+        }
+
         public IGate CreateElementaryCondition(int stateindex)
         {
             if (Variable.Type.IsBoolean)
@@ -154,10 +159,11 @@ namespace SMG.Common.Conditions
             }
             else if (null != Parent)
             {
-                foreach (var e in Parent.GetTransitions())
+                /*foreach (var e in Parent.GetTransitions())
                 {
                     yield return e;
-                }
+                }*/
+                throw new NotImplementedException();
             }
         }
 
@@ -168,7 +174,12 @@ namespace SMG.Common.Conditions
             if (!StateIndexes.Any())
             {
                 Debug.Assert(PreWildcard);
-                Debug.Assert(PostStateIndexes.Any());
+                if(!PostStateIndexes.Any())
+                {
+                    throw new CompilerException(ErrorCode.BadCondition, "wildcard requires transition.");
+                }
+
+                // Debug.Assert(PostStateIndexes.Any());
 
                 StateIndexes = Variable.Type.GetExcluding(PostStateIndexes).ToList();
             }
@@ -190,6 +201,12 @@ namespace SMG.Common.Conditions
         public override IGate Decompose(ConditionMode mode)
         {
             Freeze();
+
+            if(IsTransition && (mode != ConditionMode.Pre && mode != ConditionMode.Post))
+            {
+                throw new CompilerException(ErrorCode.BadCondition, 
+                    "state transition cannot be decomposed into a static gate.");
+            }
 
             if (Variable.Type.IsBoolean)
             {

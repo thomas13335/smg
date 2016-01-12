@@ -14,15 +14,22 @@ namespace SMG.Common.Transitions
         LEAVE
     }
 
+    /// <summary>
+    /// Represents a guard object.
+    /// </summary>
     public class Guard : TransitionMonitor
     {
+        #region Private
+
         private List<Trigger> _triggers = new List<Trigger>();
+
+        #endregion
 
         public GuardType Type { get; private set; }
 
         public IEnumerable<Trigger> Triggers { get { return _triggers; } }
 
-        internal Guard(string name, GuardType gtype, ICondition c)
+        public Guard(string name, GuardType gtype, ICondition c)
             : base(name, c)
         {
             if (Transitions.Any())

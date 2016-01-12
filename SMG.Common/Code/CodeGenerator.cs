@@ -1,6 +1,7 @@
 ﻿using SMG.Common.Code;
 using SMG.Common.Conditions;
 using SMG.Common.Effects;
+using SMG.Common.Gates;
 using SMG.Common.Transitions;
 using SMG.Common.Types;
 using System;
@@ -101,6 +102,8 @@ namespace SMG.Common.Code
             EmitTypeDeclarations();
             EmitVariableInitialization();
 
+            EmitConstructor();
+
             // EmitStateString(sb);
 
             Writer.AppendLine();
@@ -196,6 +199,9 @@ namespace SMG.Common.Code
 
         protected abstract void EmitClassHeader();
 
+        protected virtual void EmitConstructor()
+        { }
+
         protected virtual void EmitClassFooter()
         {
         }
@@ -221,12 +227,7 @@ namespace SMG.Common.Code
         {
         }
 
-        public virtual void EmitCodeLabelAssignment(string label, IGate gate)
-        {
-            Writer.Append("var " + label + " = ");
-            gate.Emit(this);
-            Writer.AppendLine(";");
-        }
+        public abstract void EmitCodeLabelAssignment(string label, IGate gate);
 
         #endregion
 
@@ -334,21 +335,26 @@ namespace SMG.Common.Code
         {
             foreach(var ec in list)
             {
-                var pre = _gc.ConvertToGate(0, ec.PreCondition);
-                var post = _gc.ConvertToGate(1, ec.PostCondition);
-
-                var c = Gate.ComposeAND(pre, post);
-
-                EmitIfHeader(c);
-                EmitEnterBlock();
-
-                foreach(var source in ec.Sources)
+                Writer.AppendComment();
+                foreach (var source in ec.Sources)
                 {
                     Writer.AppendComment(source.ToString());
                 }
 
+                var conditional = !(ec.ConditionLabel is TrueGate);
+
+                if (conditional)
+                {
+                    EmitIfHeader(ec.ConditionLabel);
+                    EmitEnterBlock();
+                }
+
                 EmitEffect(ec.Effect);
-                EmitLeaveBlock();
+
+                if (conditional)
+                {
+                    EmitLeaveBlock();
+                }
             }
         }
 
@@ -385,24 +391,30 @@ namespace SMG.Common.Code
 
             foreach (var t in triggers)
             {
+                if(t.PreCondition.Type == GateType.Fixed)
+                {
+                    continue;
+                }
+
                 var c = _gc.ConvertToGate(0, t.PreCondition);
 
                 EmitIfHeader(c);
-                writer.EnterBlock();
+                EmitEnterBlock();
+
                 writer.AppendComment("transition " + t);
                 foreach (var x in t.Transitions)
                 {
                     EmitVariableAssignment(x.Variable, x.SinglePostStateIndex);
                 }
 
-                writer.LeaveBlock();
+                EmitLeaveBlock();
             }
         }
 
         private void EmitCodeLabels(int stage)
         {
-            /*_writer.AppendComment();
-            _writer.AppendComment("stage " + stage + " conditions");*/ 
+            _writer.AppendComment();
+            _writer.AppendComment("stage " + stage + " conditions");
             _gc.Emit(this, stage);
         }
 
@@ -410,14 +422,14 @@ namespace SMG.Common.Code
         {
             // code generation start here
             EmitHandlerHeader(e.Name);
-            Writer.EnterBlock();
+            EmitEnterBlock();
 
             _gc = new GateConverter();
 
             // process labels before they are added ...
             _gc.OnBeforeAddLabel = EvaluateCodeLabelBefore;
 
-            _guards = new GuardCollection(_gc);
+            _guards = new GuardCollection();
             _effectsbefore = new EffectsCollection();
             _effectsafter = new EffectsCollection();
         }
@@ -436,7 +448,8 @@ namespace SMG.Common.Code
             _gc.Dispose();
             _gc = null;
 
-            Writer.LeaveBlock();
+            EmitLeaveBlock();
+            Writer.AppendComment();
         }
 
         private void ConvertConditions(Event e)
@@ -452,7 +465,7 @@ namespace SMG.Common.Code
             {
                 foreach (var g in t.Guards)
                 {
-                    _guards.AddGuard(c, g);
+                    _guards.AddGuard(t, g);
                 }
             }
         }
@@ -465,33 +478,6 @@ namespace SMG.Common.Code
         /// <returns></returns>
         private IGate EvaluateCodeLabelBefore(int stage, IGate gate)
         {
-            if (stage == 1)
-            {
-                if (gate is IVariableCondition)
-                {
-                    var c = (IVariableCondition)gate;
-                    if (!_modified.Contains(c.Variable.Index))
-                    {
-                        // state variable is not modified by the trigger
-                        var label = _gc.AddGate(0, gate);
-
-                        // create an alias for stage 1 value    
-                        _gc.SetAlias(1, gate, label.Gate, 0);
-                    }
-                    else
-                    {
-                        // state variable is part of the transition, infer postcondition ...
-                        //IGate inferred;
-                        /*if (_tset.InferPostState(c.Variable, c.StateIndex, out inferred))
-                        {
-                            var alt = _gc.ConvertToGate(0, inferred);
-                            _gc.SetAlias(1, gate, alt, 0);
-                            gate = alt;
-                        }*/
-                    }
-                }
-            }
-
             return gate;
         }
 

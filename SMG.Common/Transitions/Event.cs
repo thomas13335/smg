@@ -15,6 +15,7 @@ namespace SMG.Common.Transitions
         #region Private
 
         private List<ProductTrigger> _triggers = new List<ProductTrigger>();
+        private TransitionSet _tset = null;
 
         #endregion
 
@@ -33,6 +34,8 @@ namespace SMG.Common.Transitions
 
         public EffectsCollection EffectsAfter { get; private set; }
 
+        public TransitionSet Transitions { get { return _tset; } }
+
         #endregion
 
         public Event(string name)
@@ -47,15 +50,20 @@ namespace SMG.Common.Transitions
 
         public void CalculateEffects()
         {
+            _tset = new TransitionSet();
+
             // overall precondition for the event
             var c = new TriggerTermCollection<bool>(true);
 
             foreach (var t in Triggers)
             {
                 c.Add(t);
+
+                // add to event wide transition set
+                _tset.AddRange(t.Transitions);
             }
 
-            var guards = new GuardCollection(null);
+            var guards = new GuardCollection();
             var before = new EffectsCollection();
             var after = new EffectsCollection();
 
@@ -63,7 +71,7 @@ namespace SMG.Common.Transitions
             {
                 foreach (var g in t.Guards)
                 {
-                    guards.AddGuard(c, g);
+                    guards.AddGuard(t, g);
                 }
 
                 foreach (var effect in t.Effects)

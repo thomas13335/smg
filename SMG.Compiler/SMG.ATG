@@ -33,17 +33,22 @@ PRODUCTIONS
 											.)
 		Options
 		{									(. UpdateLocation(); .)
-			Declare 
-			| 
-			Assert 
-			| 
-			Trigger 
-			| 
-			Guard 
+			Rule
 		}
 		|
 		"EVAL"								(. ICondition c; .)
 		Condition<out c>					(. Result = c; .)
+		.
+
+	Rule									(. Rule rule = new Rule(); .)
+	=									
+		Trigger<rule>
+		| 
+		Guard<rule> 
+		| 
+		Declare 
+		| 
+		Assert
 		.
 
 	Options =								
@@ -58,6 +63,10 @@ PRODUCTIONS
 		[
 			"BASE"							(. IdList idlist; .)
 			DottedList<out idlist>			(. Parameters.BaseClassName = idlist.ToNamespace(); .)
+		]
+		[
+			"EVENT"							(. string name; .)
+			Identifier<out name>			(. Parameters.EventTypeName = name; .)				
 		]
 		[
 			"LANGUAGE"
@@ -91,44 +100,52 @@ PRODUCTIONS
 		Condition<out cond>					(. SM.AddAssertion(cond); .)
 		.
 
-	Trigger									(. 
-												ICondition cond; 
-												string name; 
-												Event e; 
-												Trigger trigger; 
-												EffectList effects; 
-
+	Trigger<Rule top>						(. 
+												string name;
+												var rule = new Rule(top, false);
 												UpdateLocation();
 											.)
-	=
+	=										
 		"TRIGGER"
-		Identifier<out name>				(. e = SM.AddEvent(name); .)
-		{
-			"WHEN"
-			Condition<out cond>				(. trigger = new Trigger(e, cond); .)
-			[ 
-				ActionList<out effects>		(. trigger.AddEffects(effects); .)
-			]
-											(. 
-												UpdateLocation();
-												SM.AddTrigger(trigger); 
-											.)
+		Identifier<out name>				(. rule.Event = SM.AddEvent(name); .)
+		{ 
+			Action<rule>			
+		}
+											(. rule.CreateTrigger(SM); .)
+		{									(. Rule when = new Rule(rule, true); .)
+			WhenClause<when>
+			{ 
+				Action<when>			
+			}
+											(. when.CreateTrigger(SM); .)
 		}
 		.
 
-	Guard									(. ICondition cond = null; EffectList effects; string name = null; GuardType gtype = GuardType.Undefined; .)
+	Guard<Rule top>							(.	
+												string name = null; 
+												ICondition cond;
+												GuardType gtype = GuardType.Undefined; 
+
+												UpdateLocation();
+											.)
 	=
 		"GUARD" 
 		[ Identifier<out name> ]
-		"WHEN"						
-		( "ENTER"							(. gtype = GuardType.ENTER; .)
-		 | 
-		 "LEAVE"							(. gtype = GuardType.LEAVE; .)
-		 | )
-		Condition<out cond>					(. Guard guard = SM.AddGuard(cond, gtype, name); .)
-		[
-			ActionList<out effects>			(. guard.AddEffects(effects); .)
-		]
+		{
+			"WHEN"							(. var when = new Rule(top, false); .)					
+			( 
+				"ENTER"						(. gtype = GuardType.ENTER; .)
+				| 
+				"LEAVE"						(. gtype = GuardType.LEAVE; .)
+				| 
+			)
+			Condition<out cond>				(. when.NestCondition(cond); .)
+			{ 
+				Action<when>			
+			}
+											(. when.CreateGuard(SM, name, gtype); .)
+		}
+
 		.
 
 	VariableDefinition<StateType stype>		(. string name; .)
@@ -136,34 +153,55 @@ PRODUCTIONS
 		Identifier<out name>				(. SM.AddVariable(name, stype); .)
 		.
 
+	WhenClause<Rule rule>
+	=
+		"WHEN"								(. ICondition when; .)
+		Condition<out when>					(. rule.NestCondition(when); .)
+		. 
 
-	ActionList<out EffectList actions>		(. actions = new EffectList(); Effect effect; .)
+	
+	Action<Rule rule>						(. string name; ICondition c; .)
 	=
-		Action<out effect>					(. actions.Add(effect); .)
-		{
-			Action<out effect>				(. actions.Add(effect); .)
-		}
-		.		
-		
-	Action<out Effect effect>				(. string name; effect = null; .)
-	=
-		"SEND" Identifier<out name>			(. effect = new SendEffect(SM, name); .)
+		"SEND" Identifier<out name>			(. rule.AddEffect(new SendEffect(SM, name)); .)
 		|
-		"CALL" Identifier<out name>			(. effect = new CallEffect(SM, name); .)
+		"CALL" Identifier<out name>			(. rule.AddEffect(new CallEffect(SM, name)); .)
+		|
+		"BEGIN"
+		{
+			"WHEN"							(. var nested = new Rule(rule, true); .)
+			Condition<out c>				(. nested.NestCondition(c); .)
+			{
+				Action<nested>
+			}
+											(. nested.CreateNested(SM); .)
+			|
+			Trigger<rule>
+			|
+			Guard<rule>
+		}
+		"END"
 		.
 		
 
-	Condition<out ICondition cond>			(. cond = null; ICondition other = null; .)
+	Condition<out ICondition cond>				(. cond = null; ICondition other = null; .)
 	=
 		SimpleCondition<out cond>
 		{ 
 			"AND"
-			SimpleCondition<out other>		(. cond = cond.ComposeIntersection(other); .)
+			SimpleCondition<out other>			(. cond = cond.Intersection(other); .)
 			|
 			"OR" 
-			SimpleCondition<out other>		(. cond = cond.ComposeUnion(other); .)
+			SimpleCondition<out other>			(. cond = cond.Union(other); .)
 		}		
-											(. cond.Freeze(); .)
+												(. cond.Freeze(); .)
+		[
+			"=>"								(. ICondition rcond; .)
+			Condition<out rcond>				(. 
+													rcond.Freeze();
+													cond = new TransitionCondition(cond, rcond);
+													cond.Freeze();
+												.)
+		]
 		.
 
 	SimpleCondition<out ICondition cond>		(. cond = null; ICondition other = null; .)

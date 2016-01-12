@@ -33,31 +33,85 @@ namespace SMG.UnitTest
         {
             foreach (var e in sm.Events)
             {
-                Trace(" {0,-20} {1}", e.Name, e.PreCondition);
+                Trace(" {0,-26} : {1}", e.Name, e.PreCondition);
+
+                foreach (var f in e.EffectsBefore.GetEffectConditions())
+                {
+                    Trace("  {0,-19} leave : {1}", f.Effect, f.PreCondition);
+
+                    foreach(var z in f.Elements)
+                    {
+                        Trace("    {0} => {1}", z.PreCondition, z.PostCondition);
+                    }
+                }
 
                 foreach (var f in e.EffectsAfter.GetEffectConditions())
                 {
-                    Trace("  {0,-19} {1}", f.Effect, f.PreCondition);
+                    Trace("  {0,-19} enter : {1}", f.Effect, f.PreCondition);
+
+                    foreach (var z in f.Elements)
+                    {
+                        Trace("    {0} => {1}", z.PreCondition, z.PostCondition);
+                    }
+
                 }
             }
         }
 
-        private void ValidateEventEffectCondition(StateMachine sm, string eventname, string methodname, string ctext)
+        private void ValidateEventEffectConditionPre(StateMachine sm, string eventname, string methodname, string ctext)
         {
             var ev = sm.Events.Where(e => e.Name == eventname).First();
             var ec = ev.EffectsAfter.GetEffectCondition(new CallEffect(sm, methodname));
 
-            Assert.AreEqual(ctext, ec.PreCondition.ToString());
-        }
+            var eff = ec.PreCondition.ToString();
 
+            if (ctext != eff)
+            {
+                Trace("unexpected condition: {0}", eff);
+                Assert.AreEqual(ctext, eff);
+            }
+        }
 
         private string ReadEmbeddedScript(string name)
         {
             var path = "SMG.UnitTest.Scripts." + name;
             using (var s = GetType().Assembly.GetManifestResourceStream(path))
-            using (var r = new StreamReader(s))
             {
-                return r.ReadToEnd();
+                if (null == s)
+                {
+                    throw new Exception("embedded resource '" + path + "' not found.");
+                }
+                using (var r = new StreamReader(s))
+                {
+                    return r.ReadToEnd();
+                }
+            }
+        }
+
+
+        private void PrintMonitorTransitions(TransitionMonitor trigger)
+        {
+            Trace("{0}", trigger);
+
+            //foreach (var x in trigger.Transitions)
+            {
+                var c = trigger.PreCondition;
+                Trace("  {0}", c);
+                /*Trace("  bad result:");
+                foreach (var vc in x.PreCondition.SelectAll().OfType<IVariableCondition>())
+                {
+                    Trace("    {0}", vc);
+                    foreach (var y in vc.GetTransitions())
+                    {
+                        Trace("      {0}", y);
+                    }
+                }
+                Trace("  good result:");*/
+                foreach (var y in trigger.Transitions.GetTransitions(c))
+                {
+                    Trace("      {0}", y);
+
+                }
             }
         }
 
@@ -121,8 +175,50 @@ namespace SMG.UnitTest
         }
 
         [TestMethod]
+        public void SMG_01_03_ConditionTransitions()
+        {
+            TraceFlags.ShowDepencencyAnalysis = true;
+            var cc = new StateMachineCompiler();
+            var sm = cc.CompileString(ReadEmbeddedScript("TransitionCondition.smg"));
+            cc.GenerateCode();
+
+            PrintEventEffectConditions(sm);
+
+            Trace("{0}", cc.Output);
+
+        }
+
+        [TestMethod]
+        public void SMG_01_04_ConditionTransitions()
+        {
+            TraceFlags.ShowDepencencyAnalysis = true;
+            // TraceFlags.ShowLabel = true;
+
+            var cc = new StateMachineCompiler();
+            var sm = cc.CompileString(ReadEmbeddedScript("ConditionTransitions.smg"));
+            foreach(var trigger in sm.Events.SelectMany(e => e.Triggers))
+            {
+                PrintMonitorTransitions(trigger);
+            }
+
+            foreach (var guard in sm.Guards)
+            {
+                PrintMonitorTransitions(guard);
+            }
+
+            // Trace("{0}", GateCache.Instance.ToDebugString());
+
+            //cc.GenerateCode();
+            sm.Calculate();
+
+            PrintEventEffectConditions(sm);
+        }
+
+        [TestMethod]
         public void SMG_03_StateCondition()
         {
+            TraceFlags.ShowDepencencyAnalysis = true;
+
             var sm = new StateMachine();
             var stype = new SimpleStateType("State");
             stype.AddStateNames(new[] { "A", "B", "C" });
@@ -192,9 +288,11 @@ namespace SMG.UnitTest
             var sm = cc.SM;
             sm.Calculate();
 
-            ValidateEventEffectCondition(sm, "e1", "q1", "s(a)t(b)f");
-            ValidateEventEffectCondition(sm, "e2", "q1", "s(b)t(a)f");
-            ValidateEventEffectCondition(sm, "e4", "q1", "s(b)t(b)!f");
+            PrintEventEffectConditions(sm);
+
+            ValidateEventEffectConditionPre(sm, "e1", "q1", "s(a)t(b)f");
+            ValidateEventEffectConditionPre(sm, "e2", "q1", "s(b)t(a)f");
+            ValidateEventEffectConditionPre(sm, "e4", "q1", "s(b)t(b)!f");
         }
 
         [TestMethod]
@@ -215,9 +313,9 @@ namespace SMG.UnitTest
             var sm = cc.SM;
             sm.Calculate();
 
-            ValidateEventEffectCondition(sm, "e1", "q1", "s(a)t(b)");
-            ValidateEventEffectCondition(sm, "e2", "q1", "s(b)t(a)");
-            ValidateEventEffectCondition(sm, "e3", "q1", "s(a)t(a)");
+            ValidateEventEffectConditionPre(sm, "e1", "q1", "s(a)t(b)");
+            ValidateEventEffectConditionPre(sm, "e2", "q1", "s(b)t(a)");
+            ValidateEventEffectConditionPre(sm, "e3", "q1", "s(a)t(a)");
         }
 
         [TestMethod]
@@ -350,7 +448,7 @@ namespace SMG.UnitTest
         [TestMethod]
         public void SMG_04_06_StandardConditions()
         {
-            //TraceFlags.ShowDepencencyAnalysis = true;
+            // TraceFlags.ShowDepencencyAnalysis = true;
 
             var cc = new StateMachineCompiler();
             var smgtext = ReadEmbeddedScript("StandardConditions.smg");
@@ -359,17 +457,33 @@ namespace SMG.UnitTest
             sm.Calculate();
 
 
-            ValidateEventEffectCondition(sm, "e1", "ge1", "s(a) + t(a)");
-            ValidateEventEffectCondition(sm, "e1", "gprod", "s(a)t(b) + s(b)t(a)");
-            ValidateEventEffectCondition(sm, "e1", "gsum", "s(a) + t(a)");
+            ValidateEventEffectConditionPre(sm, "e1", "ge1", "s(a) + t(a)");
+            ValidateEventEffectConditionPre(sm, "e1", "gprod", "s(a) + t(a)");
+            ValidateEventEffectConditionPre(sm, "e1", "gsum", "s(a) + t(a)");
 
             var ce1 = "s(a)t(a)";
-            ValidateEventEffectCondition(sm, "e2", "ge2", ce1);
-            ValidateEventEffectCondition(sm, "e2", "gprod", ce1);
-            ValidateEventEffectCondition(sm, "e2", "gsum", ce1);
+            ValidateEventEffectConditionPre(sm, "e2", "ge2", ce1);
+            ValidateEventEffectConditionPre(sm, "e2", "gprod", ce1);
+            ValidateEventEffectConditionPre(sm, "e2", "gsum", ce1);
 
-            ValidateEventEffectCondition(sm, "e3", "gsum", "0");
-            ValidateEventEffectCondition(sm, "e4", "gsum", "0");
+            ValidateEventEffectConditionPre(sm, "e3", "gsum", "0");
+            ValidateEventEffectConditionPre(sm, "e4", "gsum", "0");
+
+            PrintEventEffectConditions(sm);
+        }
+
+        public void SMG_04_06_SumGuard()
+        {
+            var cc = new StateMachineCompiler();
+            var smgtext = ReadEmbeddedScript("SumGuard.smg");
+            var sm = cc.CompileString(smgtext);
+
+            sm.Calculate();
+
+            PrintEventEffectConditions(sm);
+
+            cc.GenerateCode();
+            Trace("{0}", cc.Output);
         }
 
         [TestMethod]
@@ -383,7 +497,7 @@ namespace SMG.UnitTest
 
             sm.Calculate();
 
-            ValidateEventEffectCondition(sm, "e1", "m1", "s(a)t(a)");
+            ValidateEventEffectConditionPre(sm, "e1", "m1", "s(a)t(a)");
         }
 
         [TestMethod]
@@ -497,11 +611,40 @@ namespace SMG.UnitTest
 
             Trace("output:\n{0}", cc.Output);
 
-            using(var writer = new StreamWriter(@"c:\users\tc\repositories\igra3\prototype\html\smg.js"))
+            /*using(var writer = new StreamWriter(@"c:\users\tc\repositories\igra3\prototype\html\smg.js"))
             {
                 writer.Write(cc.Output);
-            }
+            }*/
         }
+
+        [TestMethod]
+        public void SMG_05_03_PseudoCode()
+        {
+            var cc = new StateMachineCompiler();
+            cc.CompileString(ReadEmbeddedScript("StandardConditions.smg"));
+
+            cc.Parameters.Language = "pseudo";
+
+            cc.GenerateCode();
+
+            Trace("output:\n{0}", cc.Output);
+        }
+
+        [TestMethod]
+        public void SMG_05_04_SyntaxCases()
+        {
+            TraceFlags.ShowDepencencyAnalysis = true;
+
+            var cc = new StateMachineCompiler();
+            cc.CompileString(ReadEmbeddedScript("SyntaxCases.smg"));
+
+            cc.Parameters.Language = "pseudo";
+
+            cc.GenerateCode();
+
+            Trace("output:\n{0}", cc.Output);
+        }
+
 
         [TestMethod]
         public void SMG_04_Program()
@@ -513,9 +656,11 @@ namespace SMG.UnitTest
 
             cc.GenerateCode();
 
+            PrintEventEffectConditions(cc.SM);
+
             Trace("{0}", cc.Output);
 
-            Trace("gatecache: \n{0}", GateCache.Instance.ToDebugString());
+            // Trace("gatecache: \n{0}", GateCache.Instance.ToDebugString());
         }
 
     }

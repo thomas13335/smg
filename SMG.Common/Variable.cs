@@ -13,6 +13,7 @@ namespace SMG.Common
     /// <remarks>
     /// <para>New variables are created by 
     /// the <see cref="M:SMG.Common.StateMachine.AddVariable(System.String,SMG.Common.StateType)"/> method.</para>
+    /// <para>Every variable can take values from 0 to Type.Cardinality - 1, called the state index.</para>
     /// </remarks>
     public class Variable
     {
@@ -24,7 +25,7 @@ namespace SMG.Common
         public string Name { get; private set; }
 
         /// <summary>
-        /// The type declaration.
+        /// The state type declaration.
         /// </summary>
         public StateType Type { get; private set; }
 
@@ -41,7 +42,7 @@ namespace SMG.Common
         public int Address { get; set; }
 
         /// <summary>
-        /// The cardinality of the set of states of this variable.
+        /// The cardinality of the set of possible states of this variable.
         /// </summary>
         public int Cardinality { get { return Type.Cardinality; } }
 

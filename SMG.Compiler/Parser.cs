@@ -20,7 +20,7 @@ public class Parser {
 	public const int _identifier = 1;
 	public const int _number = 2;
 	public const int _string = 3;
-	public const int maxT = 32;
+	public const int maxT = 35;
 
 	const bool _T = true;
 	const bool _x = false;
@@ -127,23 +127,15 @@ public class Parser {
 			
 			Options();
 			while (StartOf(1)) {
-				if (la.kind == 12) {
-					UpdateLocation(); 
-					Declare();
-				} else if (la.kind == 14) {
-					Assert();
-				} else if (la.kind == 15) {
-					Trigger();
-				} else {
-					Guard();
-				}
+				UpdateLocation(); 
+				Rule();
 			}
 		} else if (la.kind == 5) {
 			Get();
 			ICondition c; 
 			Condition(out c);
 			Result = c; 
-		} else SynErr(33);
+		} else SynErr(36);
 	}
 
 	void Identifier(out string name) {
@@ -161,7 +153,7 @@ public class Parser {
 			} else if (la.kind == 3) {
 				Get();
 				Parameters.Namespace = t.val.Trim(new char[] { '\"' }); 
-			} else SynErr(34);
+			} else SynErr(37);
 		}
 		if (la.kind == 7) {
 			Get();
@@ -171,27 +163,125 @@ public class Parser {
 		}
 		if (la.kind == 8) {
 			Get();
-			if (la.kind == 9) {
+			string name; 
+			Identifier(out name);
+			Parameters.EventTypeName = name; 
+		}
+		if (la.kind == 9) {
+			Get();
+			if (la.kind == 10) {
 				Get();
 				Parameters.Language = "C#"; 
-			} else if (la.kind == 10) {
+			} else if (la.kind == 11) {
 				Get();
 				Parameters.Language = "jscript"; 
-			} else SynErr(35);
+			} else SynErr(38);
 		}
-		if (la.kind == 11) {
+		if (la.kind == 12) {
 			Get();
 			Parameters.IsPartial = true; 
 		}
 	}
 
+	void Rule() {
+		Rule rule = new Rule(); 
+		if (la.kind == 16) {
+			Trigger(rule);
+		} else if (la.kind == 17) {
+			Guard(rule);
+		} else if (la.kind == 13) {
+			Declare();
+		} else if (la.kind == 15) {
+			Assert();
+		} else SynErr(39);
+	}
+
+	void Condition(out ICondition cond) {
+		cond = null; ICondition other = null; 
+		SimpleCondition(out cond);
+		while (la.kind == 25 || la.kind == 26) {
+			if (la.kind == 25) {
+				Get();
+				SimpleCondition(out other);
+				cond = cond.Intersection(other); 
+			} else {
+				Get();
+				SimpleCondition(out other);
+				cond = cond.Union(other); 
+			}
+		}
+		cond.Freeze(); 
+		if (la.kind == 27) {
+			Get();
+			ICondition rcond; 
+			Condition(out rcond);
+			rcond.Freeze();
+			cond = new TransitionCondition(cond, rcond);
+			cond.Freeze();
+			
+		}
+	}
+
+	void Trigger(Rule top) {
+		string name;
+		var rule = new Rule(top, false);
+		UpdateLocation();
+		
+		Expect(16);
+		Identifier(out name);
+		rule.Event = SM.AddEvent(name); 
+		while (la.kind == 21 || la.kind == 22 || la.kind == 23) {
+			Action(rule);
+		}
+		rule.CreateTrigger(SM); 
+		while (la.kind == 18) {
+			Rule when = new Rule(rule, true); 
+			WhenClause(when);
+			while (la.kind == 21 || la.kind == 22 || la.kind == 23) {
+				Action(when);
+			}
+			when.CreateTrigger(SM); 
+		}
+	}
+
+	void Guard(Rule top) {
+		string name = null; 
+		ICondition cond;
+		GuardType gtype = GuardType.Undefined; 
+		
+		UpdateLocation();
+		
+		Expect(17);
+		if (la.kind == 1) {
+			Identifier(out name);
+		}
+		while (la.kind == 18) {
+			Get();
+			var when = new Rule(top, false); 
+			if (la.kind == 19) {
+				Get();
+				gtype = GuardType.ENTER; 
+			} else if (la.kind == 20) {
+				Get();
+				gtype = GuardType.LEAVE; 
+			} else if (la.kind == 1 || la.kind == 28 || la.kind == 29) {
+			} else SynErr(40);
+			Condition(out cond);
+			when.NestCondition(cond); 
+			while (la.kind == 21 || la.kind == 22 || la.kind == 23) {
+				Action(when);
+			}
+			when.CreateGuard(SM, name, gtype); 
+		}
+	}
+
 	void Declare() {
-		Expect(12);
+		Expect(13);
 		StateType stype; 
 		TypeReference(out stype);
 		if (la.kind == 1) {
 			VariableDefinition(stype);
-			while (la.kind == 13) {
+			while (la.kind == 14) {
 				Get();
 				VariableDefinition(stype);
 			}
@@ -200,82 +290,16 @@ public class Parser {
 
 	void Assert() {
 		ICondition cond; 
-		Expect(14);
+		Expect(15);
 		Condition(out cond);
 		SM.AddAssertion(cond); 
-	}
-
-	void Trigger() {
-		ICondition cond; 
-		string name; 
-		Event e; 
-		Trigger trigger; 
-		EffectList effects; 
-		
-		UpdateLocation();
-		
-		Expect(15);
-		Identifier(out name);
-		e = SM.AddEvent(name); 
-		while (la.kind == 16) {
-			Get();
-			Condition(out cond);
-			trigger = new Trigger(e, cond); 
-			if (la.kind == 20 || la.kind == 21) {
-				ActionList(out effects);
-				trigger.AddEffects(effects); 
-			}
-			UpdateLocation();
-			SM.AddTrigger(trigger); 
-			
-		}
-	}
-
-	void Guard() {
-		ICondition cond = null; EffectList effects; string name = null; GuardType gtype = GuardType.Undefined; 
-		Expect(17);
-		if (la.kind == 1) {
-			Identifier(out name);
-		}
-		Expect(16);
-		if (la.kind == 18) {
-			Get();
-			gtype = GuardType.ENTER; 
-		} else if (la.kind == 19) {
-			Get();
-			gtype = GuardType.LEAVE; 
-		} else if (la.kind == 1 || la.kind == 24 || la.kind == 25) {
-		} else SynErr(36);
-		Condition(out cond);
-		Guard guard = SM.AddGuard(cond, gtype, name); 
-		if (la.kind == 20 || la.kind == 21) {
-			ActionList(out effects);
-			guard.AddEffects(effects); 
-		}
-	}
-
-	void Condition(out ICondition cond) {
-		cond = null; ICondition other = null; 
-		SimpleCondition(out cond);
-		while (la.kind == 22 || la.kind == 23) {
-			if (la.kind == 22) {
-				Get();
-				SimpleCondition(out other);
-				cond = cond.ComposeIntersection(other); 
-			} else {
-				Get();
-				SimpleCondition(out other);
-				cond = cond.ComposeUnion(other); 
-			}
-		}
-		cond.Freeze(); 
 	}
 
 	void DottedList(out IdList list) {
 		list = new IdList(); string name; 
 		Identifier(out name);
 		list.Add(name); 
-		while (la.kind == 31) {
+		while (la.kind == 34) {
 			Get();
 			Identifier(out name);
 			list.Add(name); 
@@ -286,7 +310,7 @@ public class Parser {
 		stype = null; string name; 
 		Identifier(out name);
 		stype = SM.GetStateType(name); 
-		if (la.kind == 25) {
+		if (la.kind == 29) {
 			Get();
 			if(null != stype) 
 			throw new CompilerException(ErrorCode.TypeRedefinition, 
@@ -296,7 +320,7 @@ public class Parser {
 			IdList list; 
 			IdentifierList(out list);
 			stype.AddStateNames(list); 
-			Expect(26);
+			Expect(30);
 			stype.Freeze(); 
 		}
 		if(null == stype)
@@ -311,42 +335,58 @@ public class Parser {
 		SM.AddVariable(name, stype); 
 	}
 
-	void ActionList(out EffectList actions) {
-		actions = new EffectList(); Effect effect; 
-		Action(out effect);
-		actions.Add(effect); 
-		while (la.kind == 20 || la.kind == 21) {
-			Action(out effect);
-			actions.Add(effect); 
-		}
+	void Action(Rule rule) {
+		string name; ICondition c; 
+		if (la.kind == 21) {
+			Get();
+			Identifier(out name);
+			rule.AddEffect(new SendEffect(SM, name)); 
+		} else if (la.kind == 22) {
+			Get();
+			Identifier(out name);
+			rule.AddEffect(new CallEffect(SM, name)); 
+		} else if (la.kind == 23) {
+			Get();
+			while (la.kind == 16 || la.kind == 17 || la.kind == 18) {
+				if (la.kind == 18) {
+					Get();
+					var nested = new Rule(rule, true); 
+					Condition(out c);
+					nested.NestCondition(c); 
+					while (la.kind == 21 || la.kind == 22 || la.kind == 23) {
+						Action(nested);
+					}
+					nested.CreateNested(SM); 
+				} else if (la.kind == 16) {
+					Trigger(rule);
+				} else {
+					Guard(rule);
+				}
+			}
+			Expect(24);
+		} else SynErr(41);
 	}
 
-	void Action(out Effect effect) {
-		string name; effect = null; 
-		if (la.kind == 20) {
-			Get();
-			Identifier(out name);
-			effect = new SendEffect(SM, name); 
-		} else if (la.kind == 21) {
-			Get();
-			Identifier(out name);
-			effect = new CallEffect(SM, name); 
-		} else SynErr(37);
+	void WhenClause(Rule rule) {
+		Expect(18);
+		ICondition when; 
+		Condition(out when);
+		rule.NestCondition(when); 
 	}
 
 	void SimpleCondition(out ICondition cond) {
 		cond = null; ICondition other = null; 
-		if (la.kind == 24) {
+		if (la.kind == 28) {
 			Get();
 			SimpleCondition(out other);
 			cond = other.Invert(); 
 		} else if (la.kind == 1) {
 			StateCondition(out cond);
-		} else if (la.kind == 25) {
+		} else if (la.kind == 29) {
 			Get();
 			Condition(out cond);
-			Expect(26);
-		} else SynErr(38);
+			Expect(30);
+		} else SynErr(42);
 	}
 
 	void StateCondition(out ICondition cond) {
@@ -355,7 +395,7 @@ public class Parser {
 		
 		Identifier(out varname);
 		v = SM.GetVariable(varname); 
-		if (la.kind == 25) {
+		if (la.kind == 29) {
 			Get();
 			scond = new StateCondition(v); 
 			StateIdentifierList(out pre);
@@ -365,7 +405,7 @@ public class Parser {
 				StateIdentifierList(out post);
 				scond.SetPostStates(post); 
 			}
-			Expect(26);
+			Expect(30);
 		}
 		cond = (ICondition)scond ?? new BooleanCondition(v); 
 	}
@@ -374,23 +414,23 @@ public class Parser {
 		list = null; 
 		if (la.kind == 1) {
 			IdentifierList(out list);
-		} else if (la.kind == 28) {
+		} else if (la.kind == 31) {
 			Get();
 			list = new IdList(true); 
-		} else if (la.kind == 29) {
+		} else if (la.kind == 32) {
 			Get();
 			list = new IdList("0"); 
-		} else if (la.kind == 30) {
+		} else if (la.kind == 33) {
 			Get();
 			list = new IdList("1"); 
-		} else SynErr(39);
+		} else SynErr(43);
 	}
 
 	void IdentifierList(out IdList list) {
 		list = new IdList(); string name; 
 		Identifier(out name);
 		list.Add(name); 
-		while (la.kind == 13) {
+		while (la.kind == 14) {
 			Get();
 			Identifier(out name);
 			list.Add(name); 
@@ -409,8 +449,8 @@ public class Parser {
 	}
 	
 	static readonly bool[,] set = {
-		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_T,_T, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x}
+		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_x,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x}
 
 	};
 } // end Parser
@@ -446,38 +486,42 @@ public class Errors {
 			case 5: s = "\"eval\" expected"; break;
 			case 6: s = "\"namespace\" expected"; break;
 			case 7: s = "\"base\" expected"; break;
-			case 8: s = "\"language\" expected"; break;
-			case 9: s = "\"c#\" expected"; break;
-			case 10: s = "\"jscript\" expected"; break;
-			case 11: s = "\"partial\" expected"; break;
-			case 12: s = "\"declare\" expected"; break;
-			case 13: s = "\",\" expected"; break;
-			case 14: s = "\"assert\" expected"; break;
-			case 15: s = "\"trigger\" expected"; break;
-			case 16: s = "\"when\" expected"; break;
+			case 8: s = "\"event\" expected"; break;
+			case 9: s = "\"language\" expected"; break;
+			case 10: s = "\"c#\" expected"; break;
+			case 11: s = "\"jscript\" expected"; break;
+			case 12: s = "\"partial\" expected"; break;
+			case 13: s = "\"declare\" expected"; break;
+			case 14: s = "\",\" expected"; break;
+			case 15: s = "\"assert\" expected"; break;
+			case 16: s = "\"trigger\" expected"; break;
 			case 17: s = "\"guard\" expected"; break;
-			case 18: s = "\"enter\" expected"; break;
-			case 19: s = "\"leave\" expected"; break;
-			case 20: s = "\"send\" expected"; break;
-			case 21: s = "\"call\" expected"; break;
-			case 22: s = "\"and\" expected"; break;
-			case 23: s = "\"or\" expected"; break;
-			case 24: s = "\"not\" expected"; break;
-			case 25: s = "\"(\" expected"; break;
-			case 26: s = "\")\" expected"; break;
+			case 18: s = "\"when\" expected"; break;
+			case 19: s = "\"enter\" expected"; break;
+			case 20: s = "\"leave\" expected"; break;
+			case 21: s = "\"send\" expected"; break;
+			case 22: s = "\"call\" expected"; break;
+			case 23: s = "\"begin\" expected"; break;
+			case 24: s = "\"end\" expected"; break;
+			case 25: s = "\"and\" expected"; break;
+			case 26: s = "\"or\" expected"; break;
 			case 27: s = "\"=>\" expected"; break;
-			case 28: s = "\"*\" expected"; break;
-			case 29: s = "\"0\" expected"; break;
-			case 30: s = "\"1\" expected"; break;
-			case 31: s = "\".\" expected"; break;
-			case 32: s = "??? expected"; break;
-			case 33: s = "invalid SMG"; break;
-			case 34: s = "invalid Options"; break;
-			case 35: s = "invalid Options"; break;
-			case 36: s = "invalid Guard"; break;
-			case 37: s = "invalid Action"; break;
-			case 38: s = "invalid SimpleCondition"; break;
-			case 39: s = "invalid StateIdentifierList"; break;
+			case 28: s = "\"not\" expected"; break;
+			case 29: s = "\"(\" expected"; break;
+			case 30: s = "\")\" expected"; break;
+			case 31: s = "\"*\" expected"; break;
+			case 32: s = "\"0\" expected"; break;
+			case 33: s = "\"1\" expected"; break;
+			case 34: s = "\".\" expected"; break;
+			case 35: s = "??? expected"; break;
+			case 36: s = "invalid SMG"; break;
+			case 37: s = "invalid Options"; break;
+			case 38: s = "invalid Options"; break;
+			case 39: s = "invalid Rule"; break;
+			case 40: s = "invalid Guard"; break;
+			case 41: s = "invalid Action"; break;
+			case 42: s = "invalid SimpleCondition"; break;
+			case 43: s = "invalid StateIdentifierList"; break;
 
 			default: s = "error " + n; break;
 		}

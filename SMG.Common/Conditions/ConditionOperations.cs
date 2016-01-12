@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SMG.Common.Transitions;
+using System;
 using System.Collections.Generic;
 
 namespace SMG.Common.Conditions
@@ -29,12 +30,23 @@ namespace SMG.Common.Conditions
             return replacer(r);
         }
 
+        /// <summary>
+        /// Creates a condition that represents the negation of the argument.
+        /// </summary>
+        /// <param name="c">The condition to invert.</param>
+        /// <returns>The inverted condition.</returns>
         public static ICondition Invert(this ICondition c)
         {
             return new InvertCondition(c);
         }
 
-        public static ICondition ComposeUnion(this ICondition a, ICondition b)
+        /// <summary>
+        /// Creates a condition that represents the union (sum) of two conditions.
+        /// </summary>
+        /// <param name="a">Argument condition.</param>
+        /// <param name="b">Argument condition.</param>
+        /// <returns>The union condition.</returns>
+        public static ICondition Union(this ICondition a, ICondition b)
         {
             var list = new List<ICondition>();
 
@@ -53,7 +65,13 @@ namespace SMG.Common.Conditions
             return new UnionCondition(list);
         }
 
-        public static ICondition ComposeIntersection(this ICondition a, ICondition b)
+        /// <summary>
+        /// Creates a condition that represents the intersection (product) of two conditions.
+        /// </summary>
+        /// <param name="a">Argument condition.</param>
+        /// <param name="b">Argument condition.</param>
+        /// <returns>The resulting intersection condition.</returns>
+        public static ICondition Intersection(this ICondition a, ICondition b)
         {
             var list = new List<ICondition>();
 
@@ -72,5 +90,15 @@ namespace SMG.Common.Conditions
             return new IntersectCondition(list);
         }
 
+        public static bool ContainsTransitions(this ICondition c)
+        {
+            var tset = new TransitionSet(c);
+            return !tset.IsEmpty;
+        }
+
+        public static IGate Decompose(this IVariableCondition vc)
+        {
+            return vc.CreateElementaryCondition(vc.StateIndex);
+        }
     }
 }

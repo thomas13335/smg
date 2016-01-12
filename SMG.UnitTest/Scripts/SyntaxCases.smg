@@ -1,0 +1,10 @@
+﻿smg SyntaxCases
+
+declare State (a, b, c, e, f) s, t
+declare boolean f, g
+
+trigger e when s(a => b) begin
+	when f(0 => 1) call on
+	when f(1 => 0) call off
+end
+

@@ -9,20 +9,15 @@ using System.Text;
 namespace SMG.Common.Transitions
 {
     /// <summary>
-    /// Collects a set of transitions during evaluation.
+    /// Collects a set of transitions.
     /// </summary>
-    public class TransitionSet : HashSet<Transition>
+    public class TransitionSet : IEnumerable<Transition>
     {
         #region Private
 
-        class VariableTransitions : List<Transition>
-        {
-            public Variable Variable { get; private set; }
-
-            public VariableTransitions(Variable v) { Variable = v; }
-        }
 
         private SortedList<int, VariableTransitions> _variables = new SortedList<int, VariableTransitions>();
+        private HashSet<Transition> _all = new HashSet<Transition>();
 
         #endregion
 
@@ -32,6 +27,8 @@ namespace SMG.Common.Transitions
         /// The variables affected by the transitions in this set.
         /// </summary>
         public IEnumerable<Variable> Variables { get { return _variables.Values.Select(e => e.Variable); } }
+
+        public bool IsEmpty { get { return !_variables.Any(); } }
 
         #endregion
 
@@ -48,33 +45,45 @@ namespace SMG.Common.Transitions
         /// Constructs a transition set from the variable conditions in a gate.
         /// </summary>
         /// <param name="g"></param>
-        public TransitionSet(IGate g)
+        public TransitionSet(TransitionSet parent, IGate g)
         {
-            foreach (var c in g.SelectAll().OfType<IVariableCondition>())
-            {
-                AddRange(c.GetTransitions());
-            }
+            AddRange(parent.GetTransitions(g));
+        }
+
+        public TransitionSet(ICondition c)
+        {
+            AddRange(c.GetTransitions());
         }
 
         #endregion
 
         #region Diagnostics
 
+        public override string ToString()
+        {
+            return ToDebugString();
+        }
+
         public string ToDebugString()
         {
             var sb = new StringBuilder();
+            var pfirst = true;
             foreach (var vt in _variables.Values)
             {
+                if (pfirst) pfirst = false; else sb.Append(" * ");
+
                 var decl = vt.Variable.Type;
-                sb.AppendFormat(" variable {0}", vt.Variable);
-                sb.AppendLine();
+                sb.Append(vt.Variable.Name);
+                sb.Append("[");
+                var first = true;
                 foreach (var t in vt)
                 {
-                    sb.AppendFormat("    {0} => {1}",
+                    if (first) first = false; else sb.Append(" + ");
+                    sb.AppendFormat("({0} => {1})",
                         decl.GetStateNames(t.PreStateIndexes).ToSeparatorList(),
                         decl.GetStateNames(t.NewStateIndexes).ToSeparatorList());
-                    sb.AppendLine();
                 }
+                sb.Append("]");
             }
 
             return sb.ToString();
@@ -102,11 +111,55 @@ namespace SMG.Common.Transitions
             }
         }
 
-        public new void Add(Transition t)
+        public TransitionSet GetTransitions(IGate c, bool post = false)
         {
-            if (!Contains(t))
+            var tset = new TransitionSet();
+            var vclist = c.SelectAll(g => g is IVariableCondition).OfType<IVariableCondition>();
+
+            foreach (var vc in vclist)
             {
-                base.Add(t);
+                foreach (var x in GetTransitions(vc.Variable))
+                {
+                    if (!post)
+                    {
+                        // work on preconditions
+                        if (x.PreStateIndexes.Contains(vc.StateIndex))
+                        {
+                            // transition matches variable condition
+                            if (x.PreStateIndexes.Length > 1)
+                            {
+                                // reduce to simple transition
+                                var y = new Transition(x.Parent);
+                                y.PreStateIndexes = new int[] { vc.StateIndex };
+                                y.NewStateIndexes = x.NewStateIndexes;
+                                tset.Add(y);
+                            }
+                            else
+                            {
+                                tset.Add(x);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        throw new NotImplementedException();
+                    }
+                }
+            }
+
+            return tset;
+        }
+
+        /// <summary>
+        /// Adds a transition to this transition set.
+        /// </summary>
+        /// <param name="t">The transition to add.</param>
+        public void Add(Transition t)
+        {
+            if (!_all.Contains(t))
+            {
+                // account only once
+                _all.Add(t);
 
                 var v = t.Variable;
                 VariableTransitions vt;
@@ -216,5 +269,18 @@ namespace SMG.Common.Transitions
 
         #endregion
 
+        #region IEnumerable
+
+        public IEnumerator<Transition> GetEnumerator()
+        {
+            return _variables.SelectMany(e => e.Value).GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return _variables.SelectMany(e => e.Value).GetEnumerator();
+        }
+
+        #endregion
     }
 }

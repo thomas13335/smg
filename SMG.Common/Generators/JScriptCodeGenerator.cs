@@ -29,6 +29,13 @@ namespace SMG.Common.Generators
             Writer.AppendLine("this." + v.Name + " = " + stateindex + ";");
         }
 
+        public override void EmitCodeLabelAssignment(string label, IGate gate)
+        {
+            Writer.Append("var " + label + " = ");
+            gate.Emit(this);
+            Writer.AppendLine(";");
+        }
+
         public override void EmitVariable(Variable v)
         {
             Writer.Append("this." + v.Name);

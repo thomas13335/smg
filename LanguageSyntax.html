@@ -1,0 +1,230 @@
+<html>
+<head>
+    <style>
+        .lit {
+            color: blue;
+            font-weight: bold;
+        }
+        .syntax {
+            font-family: Consolas;
+        }
+
+            .syntax tr td {
+                padding: 0.3cm;
+                vertical-align: top;
+            }
+
+            .prodlabel { min-width: 4cm;}
+
+        .production {
+            font-style: italic;
+            color: gray;
+        }
+    </style>
+</head>
+<body>
+    <h1>Language Syntax</h1>
+
+    <h2>Conditions</h2>
+
+    <table class="syntax">
+        <tr>
+            <td class="prodlabel"><span class="production">Condition</span></td>
+            <td>=</td>
+            <td>
+                <span class="production">SimpleCondition</span>
+                { 
+                    ( <span class="lit">AND</span> | <span class="lit">OR</span> )
+                 <span class="production">SimpleCondition</span>
+                }
+                <br/>
+                [ <span class="lit">=></span> <span class="production">Condition</span> ]
+            </td> 
+        </tr>
+        <tr>
+            <td class="prodlabel"><span class="production">SimpleCondition</span></td>
+            <td>=</td>
+            <td>
+                <span class="lit">NOT</span> <span class="production">SimpleCondition</span> <br/>
+                | <span class="production">StateCondition</span> <br/>
+                | <span class="lit">(</span> <span class="production">Condition</span> <span class="lit">)</span></td>
+        </tr>
+        <tr>
+            <td class="prodlabel"><span class="production">StateCondition</span></td>
+            <td>=</td>
+            <td>
+                <span class="production">Identifier</span>
+                 <span class="lit">(</span> 
+                <span class="production">StateList</span>
+                
+                [ <span class="lit">=></span> <span class="production">StateList</span> ] <span class="lit">)</span>
+            </td>
+        </tr>
+        <tr>
+            <td class="prodlabel"><span class="production">StateList</span></td>
+            <td>=</td>
+            <td>
+                <span class="lit">*</span> <br />
+                | <span class="production">Identifier</span> { <span class="lit">,</span> <span class="production">Identifier</span> }
+            </td>
+
+        </tr>
+        </table>
+
+    <h2>Guards and Triggers</h2>
+
+    <table class="syntax">
+        <tr>
+            <td class="prodlabel"><span class="production">Guard</span></td>
+            <td>=</td>
+            <td>
+                <span class="lit">GUARD</span>
+                [
+                <span class="production">Identifier</span> ] <br/>
+                {
+                <span class="lit">WHEN</span>
+                [
+                <span class="lit">ENTER</span>
+                |
+                <span class="lit">LEAVE</span>
+                ]
+                <span class="production">Condition</span>
+                { <span class="production">Action</span> }
+                }
+
+            </td>
+        </tr>
+
+        <tr>
+            <td class="prodlabel"><span class="production">Trigger</span></td>
+            <td>=</td>
+            <td>
+                <span class="lit">TRIGGER</span>
+                [
+                <span class="production">Identifier</span> ] <br/>
+                { <span class="production">Action</span> }
+                <br />
+                {
+                <span class="lit">WHEN</span>
+                <span class="production">Condition</span>
+                { <span class="production">Action</span> }
+                }
+            </td>
+        </tr>
+    </table>
+
+    <h2>Action Lists and Nested Blocks</h2>
+
+    <table class="syntax">
+        <tr>
+            <td class="prodlabel"><span class="production">Action</span></td>
+            <td>=</td>
+            <td>
+                <span class="lit">CALL</span> <span class="production">Identifier</span><br/>
+                |
+                <span class="lit">SEND</span> <span class="production">Identifier</span><br/>
+                |
+                <span class="production">Nested Block</span>
+            </td>
+        </tr>
+        <tr>
+            <td class="prodlabel"><span class="production">NestedBlock</span></td>
+            <td>=</td>
+            <td>
+                <span class="lit">BEGIN</span>
+                { <br/>
+                <span class="lit">WHEN</span>
+                <span class="production">Condition</span>
+                { <span class="production">Action</span> } <br />
+                | <span class="production">Trigger</span> <br />
+                | <span class="production">Guard</span> <br />
+                }
+                <span class="lit">END</span>
+            </td>
+        </tr>
+    </table>
+    
+    <h2>Declarations</h2>
+
+    <table class="syntax">
+        <tr>
+            <td class="prodlabel"><span class="production">Declaration</span></td>
+            <td>=</td>
+            <td>
+                <span class="lit">DECLARE</span>
+                <span class="production">TypeIdentifier</span>
+                [ <span class="production">TypeDefinition</span> ] <br/>
+                [
+                <span class="production">Identifier</span>
+                {
+                <span class="lit">,</span>
+                <span class="production">Identifier</span>
+                }
+                ]
+            </td>
+        </tr>
+        <tr>
+            <td class="prodlabel"><span class="production">TypeDefinition</span></td>
+            <td>=</td>
+            <td>
+                <span class="lit">(</span>
+                <span class="production">Identifier</span>
+                {
+                <span class="lit">,</span>
+                <span class="production">Identifier</span>
+                }
+                <span class="lit">)</span>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Program Structure</h2>
+
+    <table class="syntax">
+        <tr>
+            <td class="prodlabel"><span class="production">Rule</span></td>
+            <td>=</td>
+            <td>
+                <span class="production">Declaration</span><br />
+                |
+                <span class="production">Assertion</span><br />
+                |
+                <span class="production">Trigger</span><br />
+                |
+                <span class="production">Guard</span><br />
+            </td>
+        </tr>
+        <tr>
+            <td class="prodlabel"><span class="production">Program</span></td>
+            <td>=</td>
+            <td>
+                <span class="lit">SMG</span>
+                <span class="production">Options</span>
+                {
+                    <span class="production">Rule</span>
+                }
+            </td>
+        </tr>
+    </table>
+
+    <h2>Examples</h2>
+
+    <pre class="code">SMG Counter
+DECLARE State (a, b, c) s, t
+
+TRIGGER Next 
+    WHEN s(a => b) 
+    WHEN s(b => c) 
+    WHEN s(c => a) BEGIN
+        WHEN t(a => b)
+        WHEN t(b => c)
+        WHEN t(c => a)
+    END
+
+GUARD WHEN LEAVE s(c) AND t(c)
+    CALL Flipped
+
+</pre>
+
+</body>
+</html>

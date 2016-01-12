@@ -1,6 +1,7 @@
 ﻿using SMG.Common.Code;
 using SMG.Common.Conditions;
 using SMG.Common.Effects;
+using SMG.Common.Exceptions;
 using SMG.Common.Gates;
 using System;
 using System.Collections.Generic;
@@ -17,7 +18,7 @@ namespace SMG.Common.Transitions
     /// <para>Each monitor object has a pre- and a post-condition.</para>
     /// <para>The monitor object may have associated actions, called effects.</para>
     /// </remarks>
-    public abstract class TransitionMonitor : ITriggerConditions
+    public abstract class TransitionMonitor
     {
         #region Private
 
@@ -45,12 +46,12 @@ namespace SMG.Common.Transitions
         /// <summary>
         /// The transitions associated with this monitor.
         /// </summary>
-        internal TransitionSet Transitions { get { return _transitions; } }
+        public TransitionSet Transitions { get { return _transitions; } }
 
         /// <summary>
         /// The effects associated with this monitor.
         /// </summary>
-        internal IEnumerable<Effect> Effects { get { return _effects; } }
+        public IEnumerable<Effect> Effects { get { return _effects; } }
 
         #endregion
 
@@ -110,12 +111,7 @@ namespace SMG.Common.Transitions
         private void DeriveTransitions()
         {
             var translist = FullCondition.GetTransitions().ToList();
-            foreach (var t in translist)
-            {
-                var index = t.Variable.Index;
-
-                _transitions.Add(t);
-            }
+            _transitions.AddRange(translist);
         }
 
         private void DerivePostCondition()

@@ -90,7 +90,7 @@ namespace SMG.Common.Code
             foreach(var e in _list)
             {
                 IGate original = null;
-                sb.AppendFormat("  {0,-5} {1,-24} {2,-16}", e.ID, e.GetType().Name, e);
+                sb.AppendFormat("  {0,-5} {1,-24} {2,-16}", e.ID, e.GetType().Name, e.CacheKey);
                 if (e is LabelGate)
                 {
                     original = ((LabelGate)e).OriginalGate;
