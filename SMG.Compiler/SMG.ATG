@@ -183,7 +183,7 @@ PRODUCTIONS
 		.
 		
 
-	Condition<out ICondition cond>				(. cond = null; ICondition other = null; .)
+	Condition<out ICondition cond>				(. cond = null; ICondition other = null; UpdateLocation(); .)
 	=
 		SimpleCondition<out cond>
 		{ 
@@ -204,7 +204,7 @@ PRODUCTIONS
 		]
 		.
 
-	SimpleCondition<out ICondition cond>		(. cond = null; ICondition other = null; .)
+	SimpleCondition<out ICondition cond>		(. cond = null; ICondition other = null; UpdateLocation(); .)
 	=
 		"NOT" SimpleCondition<out other>		(. cond = other.Invert(); .)
 		|
@@ -215,8 +215,9 @@ PRODUCTIONS
 		')'
 		.
 
-	StateCondition<out ICondition cond>			
-												(. string varname; Variable v; StateCondition scond = null; IdList pre, post; 
+	StateCondition<out ICondition cond>			(.
+													UpdateLocation();
+													string varname; Variable v; StateCondition scond = null; IdList pre, post; 
 													cond = null; 
 												.)
 	=	
